@@ -64,7 +64,9 @@ for (const f of ts.filter((f) => f.includes('admin/api'))) {
 const tokens = new Set(
   [...readFileSync('src/styles/tokens.css', 'utf8').matchAll(/--([a-z0-9-]+):/g)].map((m) => m[1])
 );
-const locales = new Set(['ratio', 'repli', 'degrade', 'voile', 'voile-etroit']);
+/* Variables locales à un composant, posées en style en ligne : elles
+   n'ont pas à figurer dans la palette. */
+const locales = new Set(['ratio', 'repli', 'degrade', 'voile', 'voile-etroit', 'ajuste', 'h-vue']);
 for (const f of [...astro, ...fichiers.filter((f) => f.endsWith('.css'))]) {
   for (const m of readFileSync(f, 'utf8').matchAll(/var\(--([a-z0-9-]+)/g)) {
     if (!tokens.has(m[1]) && !locales.has(m[1])) {

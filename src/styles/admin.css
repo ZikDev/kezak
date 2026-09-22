@@ -894,7 +894,25 @@ form.modifie .adm__actions {
       transform var(--duree) var(--courbe),
       visibility 0s linear var(--duree);
   }
-  .adm__cote.ouvert {
+  /* Sans script, « ouvert » n'est jamais posé et la colonne restait hors
+     de l'écran : l'administration n'avait plus aucune navigation sous
+     1024 px. Le repli la remet dans le flux, en haut de la page. */
+  .adm__cote {
+    position: static;
+    transform: none;
+    visibility: visible;
+    width: auto;
+    height: auto;
+  }
+  html.js-ok .adm__cote {
+    position: fixed;
+    inset: 0 auto 0 0;
+    width: min(20rem, 86vw);
+    height: 100dvh;
+    transform: translateX(-100%);
+    visibility: hidden;
+  }
+  html.js-ok .adm__cote.ouvert {
     transform: none;
     visibility: visible;
     transition:

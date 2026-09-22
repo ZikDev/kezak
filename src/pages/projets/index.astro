@@ -2,16 +2,50 @@
 import Base from '../../layouts/Base.astro';
 import Media from '../../components/Media.astro';
 import { projetsPublies, media, tousReglages } from '../../lib/db';
+import { CATEGORIES } from '../../lib/admin';
 
 const r = tousReglages();
-const projets = projetsPublies();
-const enAvant = projets.filter((p) => p.en_avant).slice(0, 3);
+const tous = projetsPublies();
+
+/**
+ * Le filtre par catégorie.
+ *
+ * Les boutons existaient et menaient à « /projets?c=… », mais personne ne
+ * lisait ce paramètre : cliquer rechargeait la même page à l'identique, et
+ * rien n'indiquait non plus quel filtre était actif.
+ *
+ * Le filtrage se fait ici, côté serveur : pas de script, pas d'attente, et
+ * chaque sélection a sa propre adresse — partageable, mémorisable,
+ * atteignable par le bouton « précédent ».
+ *
+ * Une catégorie inconnue est ignorée plutôt que de donner une page vide.
+ */
+const categories = [...new Set(tous.map((p) => p.categorie).filter(Boolean))];
+const demande = (Astro.url.searchParams.get('c') || '').trim().toLowerCase().slice(0, 30);
+const connue = categories.includes(demande);
+/* Trois états, pas deux : aucun filtre, un filtre connu, et un filtre
+   demandé mais inconnu — un favori vers une catégorie dont le dernier
+   projet a été dépublié, un lien partagé, une faute de frappe. Ce
+   troisième cas retombait silencieusement sur la liste complète : on
+   croyait que la catégorie contenait tout le site. */
+const filtre = connue ? demande : '';
+const filtreIntrouvable = Boolean(demande) && !connue;
+const projets = filtre ? tous.filter((p) => p.categorie === filtre) : tous;
+
+/** Le libellé d'une catégorie, celui de l'administration. */
+const libelleCategorie = (valeur: string) =>
+  CATEGORIES.find((c) => c.valeur === valeur)?.libelle ||
+  tous.find((p) => p.categorie === valeur && p.categorie_txt)?.categorie_txt ||
+  valeur;
+
+/* Quand un filtre est actif, la hiérarchie « en avant / moyens / liste »
+   n'a plus de sens : on montre une seule grille de ce qui correspond. */
+const enAvant = filtre ? [] : projets.filter((p) => p.en_avant).slice(0, 3);
 const idsEnAvant = new Set(enAvant.map((p) => p.id));
 const reste = projets.filter((p) => !idsEnAvant.has(p.id));
-const moyens = reste.slice(0, 6);
-const lignes = reste.slice(6);
+const moyens = filtre ? reste : reste.slice(0, 6);
+const lignes = filtre ? [] : reste.slice(6);
 
-const categories = [...new Set(projets.map((p) => p.categorie).filter(Boolean))];
 const annees = projets.map((p) => Number(p.annee)).filter((n) => !Number.isNaN(n) && n > 1990);
 const periode = annees.length ? `${Math.min(...annees)}–${Math.max(...annees)}` : '';
 ---
@@ -26,6 +60,7 @@ const periode = annees.length ? `${Math.min(...annees)}–${Math.max(...annees)}
       <div>
         <p class="etiquette">
           Annuaire · {projets.length} planche{projets.length > 1 ? 's' : ''}{periode && ` · ${periode}`}
+          {filtre && ` · ${libelleCategorie(filtre)}`}
         </p>
         <h1 class="annuaire__titre">Tous les projets</h1>
       </div>
@@ -37,10 +72,20 @@ const periode = annees.length ? `${Math.min(...annees)}–${Math.max(...annees)}
     {
       categories.length > 1 && (
         <nav class="filtres" aria-label="Filtrer par catégorie">
-          <a class="filtre filtre--actif" href="/projets">Tout</a>
+          <a
+            class:list={['filtre', !filtre && 'filtre--actif']}
+            href="/projets"
+            aria-current={!filtre ? 'page' : undefined}
+          >
+            Tout
+          </a>
           {categories.map((c) => (
-            <a class="filtre" href={`/projets?c=${encodeURIComponent(c)}`} data-filtre={c}>
-              {c}
+            <a
+              class:list={['filtre', filtre === c && 'filtre--actif']}
+              href={`/projets?c=${encodeURIComponent(c)}`}
+              aria-current={filtre === c ? 'page' : undefined}
+            >
+              {libelleCategorie(c)}
             </a>
           ))}
         </nav>
@@ -64,7 +109,7 @@ const periode = annees.length ? `${Math.min(...annees)}–${Math.max(...annees)}
                 </span>
                 <span class="carte__titre">{p.titre}</span>
                 <span class="mono carte__meta carte__meta--accent">
-                  {p.categorie_txt || p.categorie}{p.annee && ` — ${p.annee}`}
+                  {p.categorie_txt || libelleCategorie(p.categorie)}{p.annee && ` — ${p.annee}`}
                 </span>
               </a>
             </li>
@@ -86,7 +131,7 @@ const periode = annees.length ? `${Math.min(...annees)}–${Math.max(...annees)}
                   <span class="carte__cote mono">Pl. {String(enAvant.length + i + 1).padStart(2, '0')}</span>
                 </span>
                 <span class="carte__titre carte__titre--petit">{p.titre}</span>
-                <span class="mono carte__meta">{p.categorie_txt || p.categorie}</span>
+                <span class="mono carte__meta">{p.categorie_txt || libelleCategorie(p.categorie)}</span>
               </a>
             </li>
           ))}
@@ -105,12 +150,21 @@ const periode = annees.length ? `${Math.min(...annees)}–${Math.max(...annees)}
                   <span class="mono">
                     Pl. {String(enAvant.length + moyens.length + i + 1).padStart(2, '0')} — {p.titre}
                   </span>
-                  <span class="mono ligne__cat">{p.categorie_txt || p.categorie}</span>
+                  <span class="mono ligne__cat">{p.categorie_txt || libelleCategorie(p.categorie)}</span>
                 </a>
               </li>
             ))}
           </ul>
         </>
+      )
+    }
+
+    {
+      filtreIntrouvable && (
+        <p class="filtre__vide">
+          Aucun projet dans la catégorie « {demande} » pour l'instant — voici tous les projets.{' '}
+          <a href="/projets">Revenir à la liste complète</a>.
+        </p>
       )
     }
 
@@ -161,7 +215,10 @@ const periode = annees.length ? `${Math.min(...annees)}–${Math.max(...annees)}
     align-items: center;
     min-height: 44px;
     padding: 0 var(--e-4);
-    border: 1px solid var(--filet);
+    /* Le rectangle est la seule chose qui dit qu'il y a un bouton : il
+       relève donc des 3:1 exigés pour la limite d'un composant, et non du
+       filet décoratif à 1,3:1 qui était posé là. */
+    border: 1px solid var(--filet-champ);
     color: var(--texte-doux);
     font-family: var(--mono);
     font-size: var(--t-100);
@@ -169,9 +226,30 @@ const periode = annees.length ? `${Math.min(...annees)}–${Math.max(...annees)}
     text-transform: uppercase;
     text-decoration: none;
   }
+  /* Le bouton actif était déclaré mais posé en dur sur « Tout » : quelle
+     que soit la catégorie choisie, c'est « Tout » qui restait allumé. Il
+     suit maintenant la sélection, et il le dit aussi aux lecteurs d'écran
+     par « aria-current ». */
   .filtre--actif {
     border-color: var(--reactif);
     color: var(--reactif);
+    background: rgba(143, 227, 200, 0.1); /* repli sans color-mix */
+    background: color-mix(in srgb, var(--reactif) 12%, transparent);
+  }
+  .filtre:hover,
+  .filtre:focus-visible {
+    border-color: var(--filet-fort);
+    color: var(--texte);
+  }
+  .filtre--actif:hover,
+  .filtre--actif:focus-visible {
+    border-color: var(--reactif);
+    color: var(--reactif);
+  }
+
+  .filtre__vide {
+    color: var(--texte-doux);
+    padding-block: var(--e-5);
   }
 
   .grille {
@@ -232,8 +310,16 @@ const periode = annees.length ? `${Math.min(...annees)}–${Math.max(...annees)}
     content: '';
     position: absolute;
     inset: 0 0 auto 0;
-    height: 5.5rem;
-    background: linear-gradient(180deg, rgba(10, 20, 40, 0.72) 0%, rgba(10, 20, 40, 0) 100%);
+    /* Plus courte et plus dense qu'avant : la bande était assez haute
+       mais s'éclaircissait trop vite, et le bas des lettres retombait à
+       2,7:1. Le dégradé ne commence donc qu'une fois le texte passé. */
+    height: 3.5rem;
+    background: linear-gradient(
+      180deg,
+      rgba(10, 20, 40, 0.8) 0%,
+      rgba(10, 20, 40, 0.8) 55%,
+      rgba(10, 20, 40, 0) 100%
+    );
     pointer-events: none;
   }
   .carte__cote {

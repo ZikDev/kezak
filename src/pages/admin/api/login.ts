@@ -56,6 +56,23 @@ export const POST: APIRoute = async ({ request, cookies, clientAddress, redirect
     return redirect('/admin/login?err=trop', 303);
   }
 
+  /**
+   * La tentative est comptée AVANT le calcul, pas après.
+   *
+   * Elle l'était après, et c'était un trou : cent requêtes parties dans la
+   * même milliseconde franchissaient toutes le contrôle ci-dessus — le
+   * compteur valait encore zéro — puis enchaînaient cent scrypt à 64 Mo
+   * chacun. Ces calculs occupent le même petit pool de threads que les
+   * lectures de fichiers : pendant toute la file, le site ne servait plus
+   * une seule image. Sans qu'un mot de passe ait été approché.
+   *
+   * Comptée d'abord, elle est effacée plus bas en cas de succès : une
+   * connexion réussie ne laisse donc aucune trace dans les compteurs.
+   */
+  noterTentative(cleIp);
+  noterTentative(cleCompte);
+  noterTentative('login-global');
+
   const utilisateur = utilisateurParEmail(email);
   const hache =
     utilisateur?.mot_de_passe ??
@@ -65,9 +82,6 @@ export const POST: APIRoute = async ({ request, cookies, clientAddress, redirect
   const bon = await verifierMotDePasse(motDePasse, hache);
 
   if (!utilisateur || !bon) {
-    noterTentative(cleIp);
-    noterTentative(cleCompte);
-    noterTentative('login-global');
     await attendre();
     return redirect(`/admin/login?err=identifiants&suite=${encodeURIComponent(suite)}`, 303);
   }

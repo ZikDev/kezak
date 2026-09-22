@@ -29,7 +29,10 @@ const estActif = (href: string) => ici === href || (href !== '/admin' && ici.sta
 <html lang="fr">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    {/* « interactive-widget » : sans lui, la barre d'enregistrement collée
+        en bas se retrouve derrière le clavier virtuel sur Android —
+        exactement pendant qu'on tape. */}
+    <meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content" />
     <meta name="robots" content="noindex, nofollow" />
     <title>{titre} — Admin Kezak</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />

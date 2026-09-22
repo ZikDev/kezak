@@ -70,9 +70,10 @@ const CSP_DEV = [
  * simultanées suffisaient à faire tomber le serveur. Le plafond est lu sur
  * l'en-tête « Content-Length », que tout navigateur envoie.
  *
- * Réserve honnête : une requête en « chunked » n'annonce pas sa taille et
- * passe donc ce contrôle. Le plafond définitif est celui du serveur placé
- * devant l'application — d'où la consigne de mise en ligne (étape 7).
+ * Une requête découpée en morceaux n'annonce pas sa taille : elle est
+ * traitée par `corpsBorne`, qui compte les octets à la lecture et
+ * s'interrompt au même plafond. Le serveur placé devant l'application
+ * reste la dernière ligne — d'où la consigne de mise en ligne (étape 7).
  */
 const LIMITE_CORPS = 512 * 1024;
 const LIMITE_TELEVERSEMENT = 80 * 1024 * 1024;
@@ -117,6 +118,48 @@ function pageErreur(titre: string, texte: string, statut: number, retour = '/adm
     status: statut,
     headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' },
   });
+}
+
+/**
+ * Lit un corps de requête en s'arrêtant net au-delà d'un plafond.
+ *
+ * Le plafond posé sur « Content-Length » ne protège que les requêtes qui
+ * annoncent leur taille. Une requête découpée en morceaux
+ * (« Transfer-Encoding: chunked ») n'en annonce aucune : elle franchissait
+ * donc le contrôle, et le contrôle anti-CSRF lisait ensuite son corps en
+ * entier — avant même la garde d'authentification, et sur une copie, donc
+ * les octets étaient retenus deux fois. Quelques connexions suffisaient.
+ *
+ * Renvoie `null` quand le plafond est dépassé : l'appelant refuse alors,
+ * sans avoir rien gardé en mémoire au-delà de la limite.
+ */
+async function corpsBorne(request: Request, plafond: number): Promise<string | null> {
+  const flux = request.body;
+  if (!flux) return '';
+  const lecteur = flux.getReader();
+  const morceaux: Uint8Array[] = [];
+  let total = 0;
+  try {
+    for (;;) {
+      const { done, value } = await lecteur.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > plafond) {
+        await lecteur.cancel();
+        return null;
+      }
+      morceaux.push(value);
+    }
+  } catch {
+    return null;
+  }
+  const tout = new Uint8Array(total);
+  let i = 0;
+  for (const m of morceaux) {
+    tout.set(m, i);
+    i += m.byteLength;
+  }
+  return new TextDecoder().decode(tout);
 }
 
 /** Les en-têtes de sécurité, posés sur toute réponse — y compris les refus. */
@@ -267,19 +310,44 @@ export const onRequest = defineMiddleware(async (context, next) => {
       // Origin, envoyé par tous les navigateurs sur un POST, suffit — et il
       // devient obligatoire dans ce cas précis.
       if (!origine) return refus(new Response('Origine absente', { status: 403 }));
-    } else if (type.includes('form') || type.includes('json')) {
-      // Double soumission du jeton anti-CSRF.
-      const clone = request.clone();
+    } else {
+      /**
+       * Tout le reste exige le jeton — et « tout le reste » veut bien dire
+       * tout.
+       *
+       * Ce contrôle était écrit à l'envers : il énumérait les types de
+       * contenu à vérifier (« form », « json ») et laissait passer les
+       * autres. Un POST en « text/plain », ou sans en-tête de type du tout,
+       * n'était donc soumis à aucun contrôle de jeton — et comme le
+       * contrôle d'origine, lui, ne s'applique que si l'en-tête Origin est
+       * présent, les deux trous coïncidaient. La déconnexion, qui ne lit
+       * jamais son corps, était atteignable ainsi.
+       *
+       * Un contrôle de sécurité ne doit pas reconnaître ce qui est
+       * dangereux : il doit ne laisser passer que ce qui est prouvé
+       * légitime.
+       */
+      const texte = await corpsBorne(request.clone(), plafond);
+      if (texte === null) {
+        return refus(
+          new Response('Requête trop volumineuse.', {
+            status: 413,
+            headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+          })
+        );
+      }
+
       let envoye: string | null = null;
       try {
         if (type.includes('json')) {
-          envoye = ((await clone.json()) as any)?.csrf ?? null;
+          envoye = (JSON.parse(texte) as any)?.csrf ?? null;
         } else {
-          envoye = String((await clone.formData()).get('csrf') ?? '');
+          envoye = new URLSearchParams(texte).get('csrf');
         }
       } catch {
         envoye = null;
       }
+
       if (csrfNeuf || !csrfValide(csrf, envoye)) {
         return refus(
           pageErreur(

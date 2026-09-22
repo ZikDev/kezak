@@ -164,7 +164,26 @@ const { differe = false, actif = null } = Astro.props;
       padding: var(--e-4) var(--gouttiere) var(--e-5);
       display: none;
     }
-    .bandeau__nav.ouvert {
+    /* Sans script, rien ne pose jamais « ouvert » : le menu était caché
+       et le bouton inerte, donc la page d'accueil et toutes les autres
+       n'avaient plus aucune navigation sur téléphone. Le repli affiche
+       donc le menu déplié sous le bandeau, ce qui n'est pas élégant mais
+       reste un site utilisable. Le script, lui, pose « js-ok » dès sa
+       première ligne et rend le tiroir à son comportement normal. */
+    .bandeau__nav {
+      display: flex;
+      position: static;
+      border-bottom: 0;
+      padding-inline: 0;
+    }
+    :global(html.js-ok) .bandeau__nav {
+      position: absolute;
+      inset: 100% 0 auto 0;
+      border-bottom: 1px solid var(--filet-nuit);
+      padding: var(--e-4) var(--gouttiere) var(--e-5);
+      display: none;
+    }
+    :global(html.js-ok) .bandeau__nav.ouvert {
       display: flex;
     }
     .bandeau__nav a {

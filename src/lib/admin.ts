@@ -45,6 +45,8 @@ export const CHAMPS: Record<string, string[]> = {
   projet_faits: ['etiquette', 'valeur'],
   projet_credits: ['poste', 'noms', 'cest_moi'],
   projet_medias: ['legende', 'large', 'media_id'],
+  // « youtube » n'est volontairement pas ici : sa valeur est validée par
+  // la route dédiée, pas reprise telle quelle depuis un formulaire.
   prestations: ['titre', 'meta', 'corps'],
   methode: ['titre', 'corps'],
   faq: ['question', 'reponse'],
@@ -152,7 +154,11 @@ export function cheminInterne(valeur: unknown, defaut = '/admin'): string {
   const v = String(valeur ?? '');
   if (!v.startsWith('/') || v.startsWith('//') || v.startsWith('/\\')) return defaut;
   if (/[\u0000-\u001F]/.test(v)) return defaut;
-  return v.slice(0, 300);
+  // Un en-tête HTTP ne transporte que du latin-1 : un caractère au-delà
+  // fait échouer la construction de la réponse, et l'administrateur reçoit
+  // une erreur 500 au lieu d'une redirection. On encode plutôt que de
+  // refuser — un chemin peut légitimement contenir des accents.
+  return encodeURI(v.slice(0, 300));
 }
 
 /**
@@ -217,6 +223,7 @@ export const MESSAGES: Record<string, string> = {
   format: 'Format refusé. Formats acceptés : JPEG, PNG, WebP, AVIF, MP4, WebM.',
   lourd: 'Fichier trop lourd. Limite : 15 Mo pour une image, 60 Mo pour une vidéo.',
   media: "Le fichier n'a pas pu être traité. Essayez un autre format.",
+  youtube: "Ce lien YouTube n'est pas reconnu. Collez l'adresse complète de la vidéo.",
   echec: "L'enregistrement a échoué. Le détail est dans le journal du serveur.",
 };
 

@@ -62,6 +62,9 @@ export const GET: APIRoute = ({ params, request }) => {
     'Cache-Control': 'public, max-age=31536000, immutable',
     ETag: etag,
     'X-Content-Type-Options': 'nosniff',
+    // Les images et vidéos du studio ne sont pas une banque d'images :
+    // elles ne s'intègrent que depuis le site lui-même.
+    'Cross-Origin-Resource-Policy': 'same-site',
     'Content-Disposition': 'inline',
     'Accept-Ranges': 'bytes',
   };

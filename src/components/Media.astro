@@ -3,8 +3,15 @@ import { srcset } from '../lib/media';
 
 interface Props {
   media?: Record<string, any> | null;
-  /** Rapport largeur/hauteur imposé, pour qu'il n'y ait aucun décalage. */
+  /** Rapport largeur/hauteur imposé, pour qu'il n'y ait aucun décalage.
+      « auto » laisse l'image prendre ses proportions réelles. */
   ratio?: string;
+  /**
+   * « cover » rogne pour remplir le cadre, « contain » montre l'image
+   * entière quitte à laisser du vide. La galerie utilise « contain » :
+   * une photo de projet rognée par le milieu ne montre pas le projet.
+   */
+  ajuste?: 'cover' | 'contain';
   tailles?: string;
   prioritaire?: boolean;
   classe?: string;
@@ -15,6 +22,7 @@ interface Props {
 const {
   media = null,
   ratio = '16 / 9',
+  ajuste = 'cover',
   tailles = '100vw',
   prioritaire = false,
   classe = '',
@@ -29,11 +37,12 @@ try {
 }
 const aDesVariantes = Object.keys(variantes).some((c) => c.startsWith('webp'));
 const src = variantes.webp1600 || variantes.webp800 || variantes.webp400;
+const proportions = ratio === 'auto' ? 'auto' : ratio;
 ---
 
 {
   media && aDesVariantes ? (
-    <picture class={classe} style={`--ratio:${ratio}`}>
+    <picture class={classe} style={`--ratio:${proportions};--ajuste:${ajuste}`}>
       <source type="image/avif" srcset={srcset(variantes, 'avif')} sizes={tailles} />
       <source type="image/webp" srcset={srcset(variantes, 'webp')} sizes={tailles} />
       <img
@@ -47,7 +56,7 @@ const src = variantes.webp1600 || variantes.webp800 || variantes.webp400;
       />
     </picture>
   ) : (
-    <div class={`repli ${classe}`} style={`--ratio:${ratio}; --repli:${repli}`} aria-hidden="true" />
+    <div class={`repli ${classe}`} style={`--ratio:${proportions}; --repli:${repli}`} aria-hidden="true" />
   )
 }
 
@@ -60,7 +69,7 @@ const src = variantes.webp1600 || variantes.webp800 || variantes.webp400;
   picture img {
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: var(--ajuste, cover);
   }
   .repli {
     width: 100%;

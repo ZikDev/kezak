@@ -85,7 +85,9 @@ const messages: Record<string, string> = {
   }
   .connexion__boite {
     width: min(26rem, 100%);
-    border: 1px solid var(--filet-nuit-fort);
+    /* Le jeton dédié : c'est la seule page où l'on saisit sans autre
+       repère que le rectangle du champ. */
+    border: 1px solid var(--filet-champ);
     background: rgba(10, 20, 40, 0.9);
     background: color-mix(in srgb, var(--abysse) 86%, transparent);
     padding: var(--e-6) var(--e-5);
@@ -144,7 +146,9 @@ const messages: Record<string, string> = {
     font-size: 1rem;
     color: var(--papier);
     background: transparent;
-    border: 1px solid var(--filet-nuit-fort);
+    /* Le jeton dédié : c'est la seule page où l'on saisit sans autre
+       repère que le rectangle du champ. */
+    border: 1px solid var(--filet-champ);
     border-radius: 0;
     padding: 0.8rem;
     min-height: 48px;
@@ -176,7 +180,7 @@ const messages: Record<string, string> = {
     color: #f0b6ae;
   }
   .connexion__note {
-    color: var(--ardoise);
+    color: var(--brume);
     font-size: var(--t-200);
     margin: 0;
   }

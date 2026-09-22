@@ -3,6 +3,7 @@ import Base from '../../layouts/Base.astro';
 import Media from '../../components/Media.astro';
 import Grain from '../../components/Grain.astro';
 import FacadeYoutube from '../../components/FacadeYoutube.astro';
+import Carrousel from '../../components/Carrousel.astro';
 import {
   projetParSlug,
   sectionsDuProjet,
@@ -82,7 +83,7 @@ const metas = [
     {
       projet.youtube && (
         <div class="contenu bloc-video differe">
-          <FacadeYoutube youtube={projet.youtube} titre={projet.titre} poster={hero} />
+          <FacadeYoutube youtube={projet.youtube} titre={projet.titre} />
         </div>
       )
     }
@@ -141,16 +142,7 @@ const metas = [
       {
         galerie.length > 0 && (
           <div class="contenu galerie">
-            {galerie.map((g) => (
-              <figure class:list={['galerie__item', g.large && 'galerie__item--large']}>
-                <Media
-                  media={g}
-                  ratio={g.large ? '16 / 9' : '4 / 3'}
-                  tailles="(max-width: 48rem) 100vw, 40rem"
-                />
-                {g.legende && <figcaption class="mono">{g.legende}</figcaption>}
-              </figure>
-            ))}
+            <Carrousel entrees={galerie} titre={projet.titre} />
           </div>
         )
       }
@@ -201,11 +193,16 @@ const metas = [
 </Base>
 
 <style>
+  /* Elle est le premier élément de la page, donc sous le bandeau fixe —
+     qui fait 62 px, contre 45 px pour elle : elle était intégralement
+     cachée. L'avertissement le plus important de la page ne s'est jamais
+     affiché à personne. */
   .brouillon {
     background: var(--reactif);
     color: var(--abysse);
     text-align: center;
     padding: var(--e-3);
+    padding-top: calc(var(--hauteur-bandeau) + var(--e-3));
     margin: 0;
   }
 
@@ -247,8 +244,18 @@ const metas = [
        une bande sombre en haut, pour le numéro de planche et l'année.
        Ils étaient posés en blanc sur un voile à 26 % — sur une photo
        claire, un rapport de 1,8:1, c'est-à-dire illisible. */
+    /* La bande est exprimée en pixels, et non en pourcentage de la
+       hauteur. En pourcentage, elle rétrécissait avec le héros : sur un
+       téléphone, le texte — posé à une distance FIXE du haut — retombait
+       dans la partie déjà transparente, et revenait à 1,6:1 sur une photo
+       claire. C'est-à-dire au niveau d'avant la correction. */
     background:
-      linear-gradient(180deg, rgba(10, 20, 40, 0.78) 0%, rgba(10, 20, 40, 0) 20%),
+      linear-gradient(
+        180deg,
+        rgba(10, 20, 40, 0.85) 0,
+        rgba(10, 20, 40, 0.85) calc(var(--hauteur-bandeau) + 3.5rem),
+        rgba(10, 20, 40, 0) calc(var(--hauteur-bandeau) + 7rem)
+      ),
       linear-gradient(200deg, rgba(10, 20, 40, 0.26) 0%, rgba(10, 20, 40, 0.16) 38%, rgba(10, 20, 40, 0.9) 100%);
   }
   .heros__haut {
@@ -289,8 +296,18 @@ const metas = [
     margin-top: var(--e-2);
   }
 
+  /* La vidéo occupait toute la largeur de l'écran : sur un grand moniteur,
+     un rectangle de deux mètres de large au milieu d'une page de lecture.
+     Elle est bornée et centrée, comme une planche. */
   .bloc-video {
     padding-block: var(--e-6);
+  }
+  .bloc-video :global(.yt) {
+    max-width: 52rem;
+    /* Calée à gauche, comme la colonne de lecture. Centrée sur la largeur
+       de l'écran, elle se retrouvait entièrement à droite du texte sur un
+       grand moniteur, alignée sur rien. */
+    margin-inline: 0;
   }
 
   /* --- Mode planche ------------------------------------------------ */
@@ -372,28 +389,11 @@ const metas = [
     color: var(--texte-doux);
   }
 
+  /* La grille a laissé la place au carrousel : une seule image n'occupe
+     plus toute la planche, et aucune n'est rognée. Le composant porte sa
+     propre mise en forme ; il ne reste ici que sa place dans la page. */
   .galerie {
     margin-top: var(--e-7);
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
-    gap: var(--e-4);
-  }
-  .galerie__item {
-    margin: 0;
-    display: flex;
-    flex-direction: column;
-    gap: var(--e-2);
-  }
-  .galerie__item--large {
-    grid-column: span 2;
-  }
-  .galerie__item :global(picture),
-  .galerie__item :global(.repli) {
-    border: 1px solid var(--filet);
-  }
-  .galerie figcaption {
-    color: var(--texte-doux);
-    font-size: var(--t-100);
   }
 
   .generique {
@@ -480,8 +480,7 @@ const metas = [
       grid-template-columns: minmax(0, 1fr);
       gap: var(--e-1);
     }
-    .sortie--grande,
-    .galerie__item--large {
+    .sortie--grande {
       grid-column: auto;
     }
     .bande-meta__case + .bande-meta__case {

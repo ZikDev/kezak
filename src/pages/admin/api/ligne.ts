@@ -28,6 +28,11 @@ export const POST: APIRoute = async ({ request, redirect, locals }) => {
 
   try {
     if (action === 'ajouter') {
+      // La galerie ne se remplit plus par une ligne vide : depuis que
+      // « media_id » est facultatif, plus rien n'empêchait d'en créer une
+      // qui ne référence ni fichier ni vidéo — invisible partout, et donc
+      // impossible à supprimer. Elle passe par sa route dédiée.
+      if (table === 'projet_medias') return sur('err=action');
       const champs: Record<string, any> = {};
       if (projetId) champs.projet_id = projetId;
       champs.position = projetId

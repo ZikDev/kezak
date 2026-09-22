@@ -25,11 +25,23 @@ const emailPlausible = (v: string) => /^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(v);
 export const POST: APIRoute = async ({ request, clientAddress, redirect }) => {
   const f = await request.formData();
 
+  /**
+   * Deux compteurs, et le second est le seul qui tienne vraiment.
+   *
+   * Le compteur par adresse suppose que l'adresse soit fiable. Derrière un
+   * proxy, elle ne l'est pas : ou bien elle est celle que l'appelant
+   * annonce — et le plafond ne vaut plus rien — ou bien c'est celle du
+   * proxy, la même pour tout le monde, et cinq messages dans l'heure
+   * fermeraient le formulaire à la planète entière. Le compteur global
+   * couvre les deux cas : il est assez haut pour qu'aucune journée normale
+   * ne l'atteigne, et assez bas pour qu'un robot ne remplisse pas la base.
+   */
   const ip = clientAddress || 'inconnue';
-  if (tropDeTentatives(`contact:${ip}`, 5, 3600)) {
+  if (tropDeTentatives(`contact:${ip}`, 5, 3600) || tropDeTentatives('contact-global', 60, 3600)) {
     return redirect('/contact?erreur=trop', 303);
   }
   noterTentative(`contact:${ip}`);
+  noterTentative('contact-global');
 
   // Pot de miel : un robot remplit tous les champs, un humain ne voit pas celui-ci.
   if (nettoyer(f.get('site'), 10)) return redirect('/contact?envoye=1', 303);
@@ -90,7 +102,11 @@ export const POST: APIRoute = async ({ request, clientAddress, redirect }) => {
       });
       await transport.sendMail({
         from: process.env.MAIL_FROM || 'Site Kezak <contact@kezak.ch>',
-        to: process.env.MAIL_TO || r.email || 'contact@kezak.ch',
+        // « nettoyerLigne » et non la valeur brute : ce réglage est
+        // modifiable depuis l'admin, il est nettoyé avec une fonction qui
+        // conserve volontairement les sauts de ligne, et il finit dans
+        // l'en-tête « To: ».
+        to: process.env.MAIL_TO || nettoyerLigne(r.email, 160) || 'contact@kezak.ch',
         // Objet plutôt que chaîne : nodemailer se charge alors d'échapper le
         // nom d'affichage. Assemblée à la main, la chaîne
         // « Kezak <compta@ailleurs.tld>, Victor <lui@exemple.ch> » aurait

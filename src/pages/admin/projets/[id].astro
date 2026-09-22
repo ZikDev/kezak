@@ -28,6 +28,10 @@ const images = db
 const videos = db
   .prepare("SELECT id, type, alt, fichier, variantes FROM medias WHERE type = 'video' ORDER BY id DESC")
   .all() as any[];
+// La galerie accepte les deux : on propose donc tout, images et vidéos.
+const tousMedias = db
+  .prepare('SELECT id, type, alt, legende, fichier, variantes, largeur, hauteur FROM medias ORDER BY id DESC')
+  .all() as any[];
 
 const vignette = (m: any) => {
   try {
@@ -299,30 +303,147 @@ const vignette = (m: any) => {
   <section class="adm__section">
     <header><h2 class="adm__num">06 — Galerie</h2></header>
     <p class="adm__aide">
-      Les images sont traitées en bichromie automatiquement à l'envoi. Cochez « pleine largeur »
-      pour qu'une image occupe deux colonnes.
+      Sur le site, la galerie se parcourt vue par vue, avec des flèches. Chaque vue est montrée
+      en entier, jamais rognée — une affiche verticale reste lisible. Les images de la galerie
+      gardent <strong>leurs couleurs d'origine</strong> : la bichromie est l'écriture du site,
+      pas celle des travaux qu'il montre. Une galerie accepte des images, des vidéos, et des
+      vidéos YouTube.
     </p>
+
     {
       galerie.length > 0 && (
         <div class="apercu">
           {galerie.map((g) => {
+            if (g.youtube) {
+              return (
+                <img
+                  src={`https://i.ytimg.com/vi/${g.youtube}/mqdefault.jpg`}
+                  alt=""
+                  width="320"
+                  height="180"
+                />
+              );
+            }
             const src = vignette(g);
             return src ? <img src={src} alt={g.alt || ''} width="160" height="120" /> : null;
           })}
         </div>
       )
     }
+
+    <div class="ajouts">
+      <!-- a. Envoyer un fichier -->
+      <form method="post" action="/admin/api/televerser" enctype="multipart/form-data" class="ajout">
+        <input type="hidden" name="csrf" value={csrf} />
+        <input type="hidden" name="retour" value={retour} />
+        <input type="hidden" name="projet_id" value={id} />
+        <input type="hidden" name="rattacher" value="galerie" />
+        {/* La galerie garde les couleurs : le traitement bichrome est écarté. */}
+        <input type="hidden" name="sans_bichromie" value="1" />
+        <p class="ajout__titre mono">Envoyer un fichier</p>
+        <p class="adm__champ">
+          <label for="gal-fichier">Image ou vidéo</label>
+          <input
+            type="file"
+            id="gal-fichier"
+            name="fichier"
+            accept="image/*,video/mp4,video/webm"
+            data-limite-image-mo="15"
+            data-limite-video-mo="60"
+            required
+          />
+        </p>
+        <p class="adm__champ">
+          <label for="gal-alt">Texte alternatif</label>
+          <input type="text" id="gal-alt" name="alt" maxlength="300" placeholder="Ce que montre l'image" />
+        </p>
+        <p class="adm__champ">
+          <label for="gal-legende-f">Légende</label>
+          <input type="text" id="gal-legende-f" name="legende" maxlength="300" />
+        </p>
+        <div class="adm__actions">
+          <button class="adm__bouton adm__bouton--plein" type="submit">Ajouter</button>
+        </div>
+      </form>
+
+      <!-- b. Reprendre un fichier déjà présent -->
+      <form method="post" action="/admin/api/galerie" class="ajout">
+        <input type="hidden" name="csrf" value={csrf} />
+        <input type="hidden" name="retour" value={retour} />
+        <input type="hidden" name="projet_id" value={id} />
+        <input type="hidden" name="action" value="media" />
+        <p class="ajout__titre mono">Reprendre un fichier du site</p>
+        <p class="adm__champ">
+          <label for="gal-media">Fichier</label>
+          <select id="gal-media" name="media_id" required>
+            <option value="">— choisir —</option>
+            {tousMedias.map((m) => (
+              <option value={m.id}>
+                #{m.id} — {m.type === 'video' ? 'vidéo' : 'image'}
+                {m.alt || m.legende ? ` — ${m.alt || m.legende}` : ''}
+                {m.largeur ? ` (${m.largeur}×${m.hauteur})` : ''}
+              </option>
+            ))}
+          </select>
+          <span class="adm__note">
+            Attention : un fichier envoyé depuis <a href="/admin/medias">Médias</a> a été traité en
+            bichromie. Pour une galerie en couleur, renvoyez-le par le formulaire ci-contre.
+          </span>
+        </p>
+        <p class="adm__champ">
+          <label for="gal-legende-m">Légende</label>
+          <input type="text" id="gal-legende-m" name="legende" maxlength="300" />
+        </p>
+        <div class="adm__actions">
+          <button class="adm__bouton adm__bouton--plein" type="submit">Ajouter</button>
+        </div>
+      </form>
+
+      <!-- c. Une vidéo YouTube -->
+      <form method="post" action="/admin/api/galerie" class="ajout">
+        <input type="hidden" name="csrf" value={csrf} />
+        <input type="hidden" name="retour" value={retour} />
+        <input type="hidden" name="projet_id" value={id} />
+        <input type="hidden" name="action" value="youtube" />
+        <p class="ajout__titre mono">Ajouter une vidéo YouTube</p>
+        <p class="adm__champ">
+          <label for="gal-yt">Adresse de la vidéo</label>
+          <input
+            type="url"
+            id="gal-yt"
+            name="youtube"
+            maxlength="300"
+            placeholder="https://www.youtube.com/watch?v=..."
+            aria-describedby="aide-gal-yt"
+            required
+          />
+          <span class="adm__note" id="aide-gal-yt">
+            Collez l'adresse complète telle qu'elle apparaît dans le navigateur. Rien de YouTube
+            n'est chargé sur le site avant qu'un visiteur ne clique sur lecture.
+          </span>
+        </p>
+        <p class="adm__champ">
+          <label for="gal-legende-y">Légende</label>
+          <input type="text" id="gal-legende-y" name="legende" maxlength="300" />
+        </p>
+        <div class="adm__actions">
+          <button class="adm__bouton adm__bouton--plein" type="submit">Ajouter</button>
+        </div>
+      </form>
+    </div>
+
     <ListeOrdonnee
       table="projet_medias"
       lignes={galerie}
       projetId={id}
       retour={retour}
       ajout={false}
-      etiquette={(l, i) => `Image ${String(i + 1).padStart(2, '0')} — média #${l.media_id}`}
-      champs={[
-        { nom: 'legende', libelle: 'Légende' },
-        { nom: 'large', libelle: 'Pleine largeur', type: 'case' },
-      ]}
+      etiquette={(l, i) =>
+        l.youtube
+          ? `Vue ${String(i + 1).padStart(2, '0')} — YouTube ${l.youtube}`
+          : `Vue ${String(i + 1).padStart(2, '0')} — ${l.type === 'video' ? 'vidéo' : 'image'} #${l.media_id}`
+      }
+      champs={[{ nom: 'legende', libelle: 'Légende' }]}
     />
   </section>
 
@@ -355,15 +476,38 @@ const vignette = (m: any) => {
     border-top: 1px solid var(--filet-papier);
   }
   .apercu {
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(6rem, 1fr));
     gap: 0.6rem;
     margin-bottom: var(--e-4);
   }
   .apercu img {
-    width: 10rem;
+    width: 100%;
     height: 7.5rem;
     object-fit: cover;
     border: 1px solid var(--filet-papier);
+  }
+
+  /* Les trois façons d'ajouter une vue, côte à côte tant qu'il y a la
+     place. Chacune est un formulaire complet et indépendant : on en
+     remplit un, on l'envoie, les deux autres n'ont pas bougé. */
+  .ajouts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr));
+    gap: var(--e-4);
+    margin-bottom: var(--e-5);
+  }
+  .ajout {
+    border: 1px solid var(--filet-papier);
+    background: #fff;
+    padding: var(--e-4);
+    display: flex;
+    flex-direction: column;
+    gap: var(--e-3);
+    min-width: 0;
+  }
+  .ajout__titre {
+    margin: 0;
+    color: var(--texte-papier-doux);
   }
 </style>

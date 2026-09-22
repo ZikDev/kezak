@@ -1,0 +1,306 @@
+---
+import Media from './Media.astro';
+import FacadeYoutube from './FacadeYoutube.astro';
+
+/**
+ * La galerie d'un projet, vue par vue.
+ *
+ * Elle était une grille : avec une seule image, celle-ci occupait toute la
+ * largeur de la planche et écrasait tout le reste de la page. Et comme les
+ * images étaient rognées pour remplir leur cadre, une photo verticale
+ * n'était vue que par sa bande centrale — ce qui, pour montrer un projet,
+ * revient à ne pas le montrer.
+ *
+ * Trois partis pris, donc :
+ *
+ *   — une vue à la fois, hauteur bornée, quel que soit le nombre d'entrées ;
+ *   — « contain » et jamais « cover » : l'image entière, quitte à laisser du
+ *     vide autour. C'est la seule façon de rendre une affiche verticale ;
+ *   — les couleurs d'origine. La bichromie est l'écriture du site, pas celle
+ *     des travaux qu'il montre.
+ *
+ * Trois natures d'entrée : une image, une vidéo hébergée ici, une vidéo
+ * YouTube — cette dernière derrière la même façade que le reste du site,
+ * donc sans rien charger de tiers avant un clic.
+ *
+ * Sans JavaScript, c'est un simple défilement horizontal avec accroche :
+ * les flèches disparaissent, tout le reste fonctionne.
+ */
+interface Props {
+  entrees: Record<string, any>[];
+  titre: string;
+}
+const { entrees, titre } = Astro.props;
+const total = entrees.length;
+---
+
+{
+  total > 0 && (
+    <section
+      class="carrousel"
+      data-carrousel
+      aria-roledescription={total > 1 ? 'carrousel' : undefined}
+      aria-label={`Galerie — ${titre}`}
+    >
+      <div class="carrousel__cadre">
+        {/*
+          « tabindex » sur la piste : un conteneur de défilement n'est pas
+          focalisable au clavier dans Safari ni dans les Chrome anciens.
+          Sans lui, et sans script, une galerie de photos était visible à
+          la première vue et les suivantes inatteignables autrement qu'à
+          la souris.
+        */}
+        <ul class="carrousel__piste" data-piste tabindex="0" role="group" aria-label="Vues de la galerie">
+          {entrees.map((e, i) => (
+            <li
+              class="carrousel__vue"
+              id={`vue-${e.id}`}
+              role="group"
+              aria-roledescription="vue"
+              aria-label={`${i + 1} sur ${total}`}
+            >
+              <figure class="vue__contenu">
+                {e.youtube ? (
+                  <div class="vue__yt">
+                    <FacadeYoutube youtube={e.youtube} titre={e.legende || titre} />
+                  </div>
+                ) : e.type === 'video' ? (
+                  <video
+                    class="vue__video"
+                    src={`/media/${e.fichier}`}
+                    controls
+                    playsinline
+                    preload="metadata"
+                    aria-label={e.legende || `Vidéo ${i + 1}`}
+                  />
+                ) : (
+                  <Media
+                    media={e}
+                    ratio="auto"
+                    ajuste="contain"
+                    classe="vue__image"
+                    tailles="(max-width: 48rem) 100vw, 60rem"
+                    prioritaire={i === 0}
+                  />
+                )}
+                {e.legende && <figcaption class="mono vue__legende">{e.legende}</figcaption>}
+              </figure>
+            </li>
+          ))}
+        </ul>
+
+        {total > 1 && (
+          <>
+            <button
+              class="carrousel__fleche carrousel__fleche--prec"
+              type="button"
+              data-prec
+              aria-label="Vue précédente"
+            >
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.25" aria-hidden="true">
+                <path d="M15 4 7 12l8 8" />
+              </svg>
+            </button>
+            <button
+              class="carrousel__fleche carrousel__fleche--suiv"
+              type="button"
+              data-suiv
+              aria-label="Vue suivante"
+            >
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.25" aria-hidden="true">
+                <path d="M9 4l8 8-8 8" />
+              </svg>
+            </button>
+          </>
+        )}
+      </div>
+
+      {total > 1 && (
+        <p class="carrousel__compteur mono" aria-live="polite">
+          <span data-rang>1</span> / {total}
+        </p>
+      )}
+    </section>
+  )
+}
+
+<style>
+  .carrousel {
+    /* Une seule source pour la hauteur d'une vue. Elle était écrite deux
+       fois — sur le média et dans le calcul qui centre les flèches — et
+       changer l'une sans l'autre aurait décentré les flèches en silence.
+       Le repli en « vh » n'est pas décoratif : sans lui, un navigateur
+       qui ignore « svh » invalide tout le clamp, et la hauteur du média
+       ET la position des flèches tombent d'un coup. */
+    --h-vue: clamp(15rem, 58vh, 34rem);
+    display: flex;
+    flex-direction: column;
+    gap: var(--e-3);
+    /* La galerie ne s'étale pas sur toute la largeur d'un grand écran :
+       elle reste dans la largeur de la planche, comme le texte. */
+    max-width: 79rem;
+  }
+  @supports (height: 1svh) {
+    .carrousel {
+      --h-vue: clamp(15rem, 58svh, 34rem);
+    }
+  }
+
+  .carrousel__cadre {
+    position: relative;
+  }
+
+  /* L'accroche au défilement fait tout le travail : une vue occupe la
+     largeur, et le doigt comme la molette s'arrêtent pile dessus. Les
+     flèches ne font que piloter ce même défilement. */
+  .carrousel__piste {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 100%;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    overscroll-behavior-x: contain;
+    /* La barre de défilement est masquée : le compteur et les flèches
+       disent déjà où l'on en est, et elle couperait le bas des images. */
+    scrollbar-width: none;
+    /* L'anneau de focus d'une vidéo dépasse de 3 px : sans cette marge,
+       la piste le rognait sur trois côtés et l'on ne voyait plus où l'on
+       se trouvait au clavier. */
+    padding: 4px;
+    scroll-padding: 4px;
+  }
+  .carrousel__piste::-webkit-scrollbar {
+    display: none;
+  }
+
+  .carrousel__vue {
+    scroll-snap-align: center;
+    scroll-snap-stop: always;
+    min-width: 0;
+  }
+
+  .vue__contenu {
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--e-3);
+  }
+
+  /* Hauteur bornée, et proportionnelle à l'écran plutôt que fixe : une
+     image ne doit jamais demander de faire défiler pour être vue en
+     entier, ni sur un téléphone ni sur un grand moniteur. */
+  .vue__contenu :global(.vue__image),
+  .vue__video,
+  .vue__yt {
+    width: 100%;
+    height: var(--h-vue);
+    background: var(--surface);
+    border: 1px solid var(--filet);
+  }
+  .vue__contenu :global(.vue__image) {
+    aspect-ratio: auto;
+  }
+  .vue__video {
+    object-fit: contain;
+  }
+  /* La façade YouTube garde ses propres proportions : on la centre dans la
+     hauteur disponible au lieu de l'étirer. */
+  .vue__yt {
+    display: grid;
+    place-items: center;
+    padding: var(--e-3);
+    background: var(--abysse);
+  }
+  /* La façade garde ses proportions 16/9 : sa largeur doit donc tenir
+     compte de la hauteur disponible, sinon elle déborde du cadre dès que
+     la fenêtre est basse — un portable 13 pouces suffit — et se fait
+     rogner par le haut. */
+  .vue__yt :global(.yt) {
+    width: min(100%, 52rem, calc((var(--h-vue) - 2 * var(--e-3)) * 16 / 9));
+  }
+
+  .vue__legende {
+    color: var(--texte-doux);
+    padding-inline: var(--e-2);
+    max-width: var(--mesure);
+  }
+
+  /* --- Les flèches ------------------------------------------------- */
+  .carrousel__fleche {
+    position: absolute;
+    top: calc(var(--h-vue) / 2);
+    transform: translateY(-50%);
+    width: 44px;
+    height: 44px;
+    display: grid;
+    place-items: center;
+    border: 1px solid var(--filet-fort);
+    background: var(--fond);
+    color: var(--texte);
+    cursor: pointer;
+    transition:
+      background-color var(--duree) var(--courbe),
+      color var(--duree) var(--courbe),
+      opacity var(--duree) var(--courbe);
+  }
+  .carrousel__fleche--prec {
+    left: calc(var(--e-3) * -1);
+  }
+  .carrousel__fleche--suiv {
+    right: calc(var(--e-3) * -1);
+  }
+  .carrousel__fleche:hover:not(:disabled),
+  .carrousel__fleche:focus-visible {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--accent-contraste);
+  }
+  /* Une flèche en fin de course reste lisible : à 30 % d'opacité, elle
+     disparaissait, et l'on ne distinguait plus « fin de la galerie » de
+     « la commande a été retirée ». */
+  .carrousel__fleche[aria-disabled='true'] {
+    opacity: 0.55;
+    cursor: default;
+    color: var(--texte-doux);
+  }
+  .carrousel__fleche[aria-disabled='true']:hover {
+    background: var(--fond);
+    border-color: var(--filet-fort);
+    color: var(--texte-doux);
+  }
+
+  /* Sans script, les flèches ne pilotent rien : elles ne s'affichent pas,
+     et le défilement horizontal reste parfaitement utilisable. */
+  .carrousel__fleche {
+    display: none;
+  }
+  :global(html.js-ok) .carrousel__fleche {
+    display: grid;
+  }
+
+  .carrousel__compteur {
+    align-self: flex-end;
+    color: var(--texte-doux);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .carrousel__piste {
+      scroll-behavior: auto;
+    }
+  }
+
+  /* Sur un écran étroit, les flèches empiètent sur la gouttière : on les
+     ramène à l'intérieur du cadre plutôt que de les laisser déborder. */
+  @media (max-width: 47.99rem) {
+    .carrousel__fleche--prec {
+      left: var(--e-2);
+    }
+    .carrousel__fleche--suiv {
+      right: var(--e-2);
+    }
+  }
+</style>

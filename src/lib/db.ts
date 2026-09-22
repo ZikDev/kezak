@@ -10,6 +10,7 @@ import Database from 'better-sqlite3';
 import { mkdirSync } from 'node:fs';
 import { join, isAbsolute, resolve } from 'node:path';
 import { SCHEMA } from './schema.mjs';
+import { migrationsEnAttente } from './migrations.mjs';
 
 const DATA_DIR = process.env.DATA_DIR || './data';
 const dataDir = isAbsolute(DATA_DIR) ? DATA_DIR : resolve(process.cwd(), DATA_DIR);
@@ -25,7 +26,12 @@ db.pragma('busy_timeout = 5000');
 /* ------------------------------------------------------------------ */
 
 export function migrer() {
+  // D'abord les tables manquantes, ensuite les changements de structure sur
+  // une base déjà remplie — « CREATE TABLE IF NOT EXISTS » ne modifie jamais
+  // une table existante, c'est migrations.mjs qui s'en charge.
   db.exec(SCHEMA);
+  const faites = migrationsEnAttente(db);
+  for (const nom of faites) console.log(`[base] migration appliquée — ${nom}`);
 }
 
 /* ------------------------------------------------------------------ */
@@ -106,12 +112,20 @@ export const faitsDuProjet = (id: number) =>
 export const creditsDuProjet = (id: number) =>
   listeOrdonnee('projet_credits')('WHERE projet_id = ?', id);
 
+/**
+ * Le contenu de la galerie d'un projet.
+ *
+ * Jointure ouverte (« LEFT JOIN ») et non fermée : une entrée YouTube ne
+ * référence aucun fichier du site, et une jointure fermée l'aurait
+ * silencieusement écartée du résultat.
+ */
 export function mediasDuProjet(id: number) {
   return db
     .prepare(
-      `SELECT pm.*, m.fichier, m.alt, m.largeur, m.hauteur, m.variantes, m.type
-       FROM projet_medias pm JOIN medias m ON m.id = pm.media_id
-       WHERE pm.projet_id = ? ORDER BY pm.position ASC, pm.id ASC`
+      `SELECT pm.*, m.fichier, m.alt, m.largeur, m.hauteur, m.variantes, m.type, m.bichromie
+       FROM projet_medias pm LEFT JOIN medias m ON m.id = pm.media_id
+       WHERE pm.projet_id = ? AND (pm.media_id IS NOT NULL OR pm.youtube <> '')
+       ORDER BY pm.position ASC, pm.id ASC`
     )
     .all(id) as Record<string, any>[];
 }

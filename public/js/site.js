@@ -284,11 +284,132 @@
     }
   })();
 
+  /* --- Le carrousel de la galerie ---------------------------------
+     Tout le déplacement est fait par le navigateur : on ne fait que lui
+     demander de défiler d'une vue, et l'accroche CSS s'occupe de
+     s'arrêter au bon endroit. Rien n'est calculé à la main, donc rien ne
+     se désaligne quand la fenêtre change de taille.
+
+     Sans ce script, la piste reste un défilement horizontal ordinaire :
+     on fait glisser au doigt, à la molette, ou au clavier. */
+  document.querySelectorAll('[data-carrousel]').forEach(function (carrousel) {
+    var piste = carrousel.querySelector('[data-piste]');
+    if (!piste) return;
+    var vues = Array.prototype.slice.call(piste.children);
+    if (vues.length < 2) return;
+
+    var prec = carrousel.querySelector('[data-prec]');
+    var suiv = carrousel.querySelector('[data-suiv]');
+    var rang = carrousel.querySelector('[data-rang]');
+
+    // « offsetLeft » se mesure depuis le cadre, « scrollLeft » depuis le
+    // bord intérieur de la piste : les deux diffèrent de la marge de la
+    // piste. On prend la première vue comme origine, et la différence
+    // disparaît — quelle que soit la marge, aujourd'hui ou demain.
+    var origine = function () {
+      return vues[0].offsetLeft;
+    };
+
+    var indexCourant = function () {
+      // La vue dont le bord gauche est le plus proche du bord de la piste.
+      var base = origine();
+      var meilleur = 0;
+      var ecartMin = Infinity;
+      for (var i = 0; i < vues.length; i++) {
+        var ecart = Math.abs(vues[i].offsetLeft - base - piste.scrollLeft);
+        if (ecart < ecartMin) {
+          ecartMin = ecart;
+          meilleur = i;
+        }
+      }
+      return meilleur;
+    };
+
+    // L'index visé, et non celui mesuré : pendant l'animation, la position
+    // lue est encore celle de la vue précédente, et deux clics rapides
+    // redemandaient donc deux fois la même destination.
+    var vise = 0;
+
+    var allerA = function (i) {
+      vise = Math.max(0, Math.min(vues.length - 1, i));
+      var cible = vues[vise];
+      if (!cible) return;
+      // « prefers-reduced-motion » : le CSS remet le défilement en
+      // instantané, mais un « behavior: smooth » passé ici l'emporterait.
+      piste.scrollTo({
+        left: cible.offsetLeft - origine(),
+        behavior: moinsDeMouvement ? 'auto' : 'smooth',
+      });
+      etatDesFleches();
+    };
+
+    var etatDesFleches = function () {
+      // « aria-disabled » et non « disabled » : désactiver un bouton qui a
+      // le focus le renvoie au début du document, sans un mot. Le bouton
+      // reste donc focalisable, et c'est le gestionnaire qui ne fait rien.
+      if (prec) prec.setAttribute('aria-disabled', String(vise === 0));
+      if (suiv) suiv.setAttribute('aria-disabled', String(vise === vues.length - 1));
+    };
+
+    var rafraichir = function () {
+      vise = indexCourant();
+      if (rang) {
+        var s = String(vise + 1);
+        // Réécrire un texte identique suffit à le faire réannoncer par
+        // certains lecteurs d'écran : à chaque doigt posé, on entendait
+        // le même numéro.
+        if (rang.textContent !== s) rang.textContent = s;
+      }
+      etatDesFleches();
+    };
+
+    if (prec) {
+      prec.addEventListener('click', function () {
+        if (prec.getAttribute('aria-disabled') !== 'true') allerA(vise - 1);
+      });
+    }
+    if (suiv) {
+      suiv.addEventListener('click', function () {
+        if (suiv.getAttribute('aria-disabled') !== 'true') allerA(vise + 1);
+      });
+    }
+
+    // Les flèches du clavier, quand le focus est dans le carrousel — mais
+    // pas quand il est sur une vidéo : ce sont là ses commandes d'avance
+    // et de recul, les plus utilisées au clavier.
+    carrousel.addEventListener('keydown', function (e) {
+      if (e.target.closest && e.target.closest('video, audio, input, textarea, select')) return;
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        allerA(vise - 1);
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        allerA(vise + 1);
+      }
+    });
+
+    var attente = 0;
+    piste.addEventListener('scroll', function () {
+      clearTimeout(attente);
+      attente = setTimeout(rafraichir, 90);
+    });
+    window.addEventListener('resize', function () {
+      clearTimeout(attente);
+      attente = setTimeout(rafraichir, 150);
+    });
+    rafraichir();
+  });
+
   /* --- Façade YouTube : rien de tiers avant le clic --------------- */
   document.querySelectorAll('.yt').forEach(function (bloc) {
     var bouton = bloc.querySelector('.yt__bouton');
     if (!bouton) return;
-    bouton.addEventListener('click', function () {
+    bouton.addEventListener('click', function (e) {
+      // Le repli est un lien vers YouTube : on l'intercepte pour ouvrir la
+      // vidéo sur place. Un clic avec une touche de modification, ou du
+      // bouton du milieu, garde son comportement d'ouverture normale.
+      if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+      e.preventDefault();
       var id = bloc.getAttribute('data-youtube');
       var cadre = document.createElement('iframe');
       cadre.src =

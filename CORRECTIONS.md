@@ -1,5 +1,195 @@
 # Ce qui a été corrigé
 
+## Version 6 — la galerie, les filtres, et l'audit qui a suivi
+
+### 1. Les filtres de la page « Projets »
+
+Les boutons de catégorie ne filtraient rien et ne changeaient jamais
+d'aspect. Trois choses manquaient, et la troisième expliquait les deux
+autres.
+
+La liste des catégories était écrite **deux fois** : une fois à la
+création d'un projet (« Motion & 3D »), une fois dans la page de tri
+(« motion »). On enregistrait un libellé et on cherchait une valeur : la
+comparaison échouait toujours. Les deux endroits lisent maintenant la
+même liste, `CATEGORIES` dans `src/lib/admin.ts` — ajouter une catégorie
+se fait à un seul endroit, et les deux écrans suivent.
+
+Le tri lui-même se fait par l'adresse (`/projets?c=video`), ce qui le
+rend partageable, indexable, et fonctionnel sans JavaScript. Le
+paramètre est borné à trente caractères et confronté aux catégories
+réellement présentes : une valeur inconnue n'affiche pas une page vide
+mais la totalité des projets, avec une phrase qui le dit.
+
+Le bouton actif porte enfin `aria-current="page"` et le fond plein de
+l'accent — la même information pour l'œil et pour un lecteur d'écran.
+
+### 2. La galerie devient un carrousel
+
+Une seule image occupait toute la largeur disponible et débordait de
+l'écran en hauteur. Le nouveau composant `Carrousel.astro` montre une vue
+à la fois, dans une hauteur bornée à `clamp(15rem, 58svh, 34rem)` : jamais
+plus de 58 % de la hauteur réelle de l'écran, jamais moins de 15 rem sur
+un téléphone posé à l'horizontale.
+
+L'image est cadrée en `contain` et non en `cover` : **on la voit
+entière**, quelle que soit sa proportion, quitte à laisser du fond autour.
+C'était la demande, et c'est l'inverse du réflexe habituel.
+
+Le défilement repose sur `scroll-snap` — donc sur le navigateur, pas sur
+un script. Sans JavaScript, la piste reste défilante au doigt, à la
+molette et au clavier (elle est atteignable par tabulation, avec un rôle
+et un intitulé) ; seules les flèches apparaissent en plus quand le script
+a bien été chargé. Les flèches annoncent leur état avec `aria-disabled`
+plutôt que de disparaître, et `prefers-reduced-motion` coupe le
+défilement animé.
+
+Les vues sont de trois natures : image, vidéo déposée sur le site, ou
+vidéo YouTube. C'est ce qui a demandé de toucher à la base — voir le
+point 5.
+
+**Les images de la galerie sont en couleur.** Le traitement bichrome
+reste la signature du site, mais il était appliqué à tout ce qui montait
+dans la médiathèque. Le formulaire d'ajout à la galerie force désormais
+la couleur.
+
+> **À savoir :** une image déjà téléversée en bichromie ne peut pas être
+> remise en couleur — la conversion s'est faite à l'enregistrement, et
+> l'original n'est pas conservé. Les vues concernées sont à **téléverser à
+> nouveau** depuis la nouvelle section galerie.
+
+### 3. La vidéo YouTube d'une fiche projet
+
+Elle prenait toute la largeur de la colonne. Elle est maintenant bornée
+par sa hauteur : `min(100%, 52rem, hauteur × 16/9)` — elle grandit
+jusqu'à ce que l'un des trois plafonds soit atteint, et pas au-delà.
+
+L'image d'attente a disparu : la façade reprend la vignette de YouTube
+et laisse son interface par défaut apparaître au clic. Le bouton de
+lecture est devenu un **lien** vers la vidéo : sans JavaScript, il ouvre
+YouTube dans un onglet au lieu de ne rien faire.
+
+*Réserve honnête, puisque la vignette vient de YouTube :* elle est
+chargée dès l'affichage de la page, donc `i.ytimg.com` voit passer le
+visiteur avant tout clic. C'est le prix de l'interface d'origine, qui
+était la demande. Une vignette recopiée sur le serveur supprimerait cette
+requête — dites-le si vous le souhaitez.
+
+### 4. Ajouter à la galerie depuis la fiche du projet
+
+La section « Galerie » de `/admin/projets/…` propose trois entrées
+indépendantes : téléverser un fichier, reprendre un média déjà présent
+sur le site, ou coller une adresse YouTube. Chacune est un formulaire
+complet — pas d'onglet, pas d'état à mémoriser, rien qui se perde si la
+page est rechargée.
+
+Le lien YouTube accepte tout ce qu'on peut réellement copier : l'adresse
+longue, l'adresse courte `youtu.be`, un `shorts/`, un `live/`, un
+`embed/`, ou l'identifiant seul.
+
+### 5. La base de données change de forme
+
+La galerie ne pouvait contenir que des médias : la colonne `media_id`
+était obligatoire. Elle devient facultative, et une colonne `youtube`
+apparaît à côté.
+
+SQLite ne sait pas retirer une contrainte `NOT NULL` : il faut
+reconstruire la table. C'est l'objet de `src/lib/migrations.mjs`, nouveau
+fichier, qui s'exécute tout seul au démarrage du serveur. **La mise à
+jour ne demande donc aucune manipulation** — mais elle touche vos
+données, et c'est la première fois : faites la sauvegarde indiquée dans
+le tutoriel avant de redémarrer.
+
+---
+
+## L'audit de la version 6
+
+### Sécurité
+
+**1. La migration pouvait effacer des données — grave, et de mon fait.**
+La première version du fichier de migration vérifiait « est-ce déjà
+fait ? » **en dehors** de la transaction qui faisait le travail. Deux
+processus démarrant ensemble — ce qui arrive à chaque redémarrage
+applicatif — pouvaient tous deux conclure « non » ; le second
+reconstruisait alors la table par-dessus le résultat du premier, et
+comme sa copie remplit la colonne `youtube` avec une valeur vide,
+**toutes les vidéos YouTube de la galerie disparaissaient** — invisibles
+sur le site, et impossibles à supprimer depuis l'admin.
+
+L'état des migrations est désormais tenu par `PRAGMA user_version`, lu et
+écrit **dans** une transaction ouverte en `BEGIN IMMEDIATE` : le second
+processus attend, relit la version, constate qu'il n'y a rien à faire et
+ressort. *Vérifié par exécution sur une vraie base : la migration rejouée
+dix fois ne change rien, les entrées YouTube survivent, une base neuve est
+reconnue comme déjà à jour, et un contrôle des clés étrangères est passé
+avant de valider — si une ligne était devenue orpheline, la transaction
+serait annulée.*
+
+**2. Le contrôle anti-CSRF était écrit à l'envers — sérieux.**
+Il énumérait les types de contenu à vérifier (`form`, `json`) et laissait
+passer le reste. Un POST en `text/plain`, ou sans en-tête de type du
+tout, n'était soumis à aucun contrôle de jeton ; et comme le contrôle
+d'origine ne s'applique que si l'en-tête « Origin » est présent, les deux
+trous coïncidaient exactement. La route de déconnexion, qui ne lit jamais
+son corps, était atteignable ainsi. Le contrôle est inversé : hors
+téléversement, **tout** exige le jeton.
+
+**3. Le plafond de taille se contournait — sérieux.**
+La version 5 posait une limite sur l'en-tête `Content-Length` et le
+disait : une requête découpée en morceaux n'annonce pas sa taille. Cette
+réserve est levée. Le corps est lu par `corpsBorne`, qui compte les
+octets au fil de la lecture et coupe la connexion au dépassement, sans
+avoir rien gardé.
+
+**4. Un lien « YouTube » pouvait venir de n'importe où — mineur.**
+L'extraction se contentait de chercher `v=` dans l'adresse : n'importe
+quel site contenant ce fragment était accepté, l'identifiant extrait
+était inoffensif mais la vue s'affichait vide. Une liste d'hôtes admis a
+été ajoutée. *Vérifié par exécution : les six formes d'adresse
+légitimes passent ; un autre site, un sous-domaine trompeur
+(`youtube.com.mechant.example`), un `javascript:`, et deux tentatives
+d'injection de balise ou d'échappement d'attribut sont refusés.*
+
+**5. Le média repris depuis la médiathèque est vérifié avant insertion.**
+Sans quoi la clé étrangère refusait l'écriture avec un message SQLite
+illisible affiché à l'administrateur.
+
+### Fonctionnement
+
+**6. Les vidéos YouTube étaient invisibles dans l'admin.** La requête qui
+liste la galerie joignait la table des médias en jointure stricte : une
+ligne sans média — donc toute ligne YouTube — disparaissait du résultat.
+Passée en `LEFT JOIN`, avec la condition qui va avec.
+
+**7. La position du carrousel dépendait d'une marge.** Le calcul mêlait
+`offsetLeft`, mesuré depuis le cadre, et `scrollLeft`, mesuré depuis le
+bord intérieur : les deux diffèrent exactement de la marge de la piste,
+que j'avais ajoutée pour que l'anneau de mise au point d'une vidéo ne soit
+pas rogné. La première vue sert maintenant d'origine, et la différence
+s'annule — quelle que soit la marge, aujourd'hui ou plus tard. *Vérifié
+par exécution sur quatre positions.*
+
+**8. La touche flèche ne doit pas voler le clavier.** Dans le carrousel,
+les flèches font défiler ; mais si le doigt est dans un champ, une vidéo
+ou un sélecteur, elles lui reviennent.
+
+### Responsive
+
+Reprise complète des écrans étroits sur les pages touchées : la fiche
+projet (voile de titre calculé en pixels plutôt qu'en pourcentage, vidéo
+alignée à gauche plutôt qu'étirée), la page des projets (les filtres
+passent en défilement horizontal plutôt qu'en pile), la section galerie
+de l'admin (les trois formulaires d'ajout passent en colonne sous
+48 rem), et la hauteur du carrousel, exprimée en `svh` là où le
+navigateur le sait — c'est la hauteur réellement visible, barres du
+navigateur déduites, celle qui compte sur un téléphone.
+
+Le menu de l'admin et celui du site restent dépliés quand le script ne
+s'est pas chargé : un menu replié par du CSS et déplié par du JavaScript
+absent, c'est un site sans navigation.
+
+---
+
 ## Version 5.1 — ce que la mise en ligne a révélé
 
 Quatre corrections, toutes venues du passage en production. Aucune ne

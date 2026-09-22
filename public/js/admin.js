@@ -10,6 +10,10 @@
 (function () {
   'use strict';
 
+  // Même signal que sur le site public : le CSS ne replie le tiroir de
+  // navigation que là où un script existe pour le rouvrir.
+  document.documentElement.classList.add('js-ok');
+
   var $ = function (s, r) {
     return (r || document).querySelector(s);
   };

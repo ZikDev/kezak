@@ -118,10 +118,15 @@ CREATE TABLE IF NOT EXISTS projet_credits (
   cest_moi  INTEGER NOT NULL DEFAULT 0
 );
 
+/* Une entrée de galerie est SOIT un fichier du site (media_id), SOIT une
+   vidéo YouTube (youtube). D'où un media_id facultatif : c'est la seule
+   différence avec la version d'origine, et c'est ce que la migration de
+   src/lib/migrations.mjs va chercher sur une base déjà remplie. */
 CREATE TABLE IF NOT EXISTS projet_medias (
   id        INTEGER PRIMARY KEY,
   projet_id INTEGER NOT NULL REFERENCES projets(id) ON DELETE CASCADE,
-  media_id  INTEGER NOT NULL REFERENCES medias(id) ON DELETE CASCADE,
+  media_id  INTEGER REFERENCES medias(id) ON DELETE CASCADE,
+  youtube   TEXT NOT NULL DEFAULT '',
   position  INTEGER NOT NULL,
   legende   TEXT NOT NULL DEFAULT '',
   large     INTEGER NOT NULL DEFAULT 0

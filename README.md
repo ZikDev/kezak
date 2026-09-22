@@ -343,6 +343,7 @@ ne connaît que les fonctions qu'il exporte.
 
 ```bash
 cd ~/sites/kezak
+npm run sauvegarde     # d'abord, toujours
 git pull
 npm ci
 npm run build
@@ -350,6 +351,14 @@ npm run build
 
 Puis **Redémarrer** depuis le tableau de bord. La base et les médias ne
 bougent pas : ils sont ailleurs.
+
+> **Quand la mise à jour change la forme de la base.** Certaines versions
+> ajoutent ou modifient une colonne — la version 6 le fait, pour loger les
+> vidéos YouTube dans la galerie. La transformation se joue **toute seule au
+> redémarrage**, il n'y a aucune commande à taper ; le journal affiche
+> `[db] migration appliquée : …` la première fois, et plus rien ensuite.
+> C'est précisément pour ces versions-là que la sauvegarde se prend avant,
+> et pas après.
 
 ---
 
@@ -371,8 +380,29 @@ dans l'admin comme on descend sur le site.
 - **Médias** — toute image envoyée est **automatiquement passée en bichromie
   cyanotype** et déclinée en AVIF et WebP sur quatre largeurs. Décochez la
   case pour garder les couleurs d'origine : à réserver aux logos de clients.
+  La bichromie est appliquée **à l'enregistrement** : une fois l'image
+  envoyée, on ne revient pas en arrière, on la renvoie.
 - **Messages** — ce que le formulaire a reçu. Les messages sont enregistrés
   en base **avant** l'envoi du courriel : si le SMTP tombe, rien n'est perdu.
+
+## La galerie d'un projet
+
+Section **06** de la fiche projet. Trois façons d'ajouter une vue, côte à
+côte :
+
+| Entrée | Quand s'en servir |
+| --- | --- |
+| **Téléverser une image** | le cas courant. L'image est gardée **en couleur** — c'est le seul endroit du site où la bichromie ne s'applique pas |
+| **Reprendre un média du site** | l'image est déjà dans la médiathèque. Attention : si elle y est arrivée en bichromie, elle restera en bichromie |
+| **Coller un lien YouTube** | adresse longue, `youtu.be`, `shorts/`, `live/`, `embed/` ou identifiant seul |
+
+Sur le site, ces vues forment un **carrousel** : une à la fois, flèches de
+part et d'autre, hauteur bornée, images visibles **en entier** — jamais
+recadrées. Au doigt et au clavier, la piste défile même sans JavaScript.
+
+> Une image de galerie déjà envoyée avant la version 6 est en bichromie, et
+> l'original n'existe plus. Pour la remettre en couleur, supprimez la vue et
+> **téléversez à nouveau le fichier** depuis cette section.
 
 ## Changer le mot de passe
 
@@ -426,6 +456,10 @@ demandé moins d'animations ou active l'économie de données.
 | Du contenu reste invisible sur une page publique | `/js/site.js` ne s'est pas chargé. Un filet le rend visible au bout de 2,5 s ; regardez l'onglet « Réseau » de la console |
 | Dans l'admin, un bouton « Enregistrer » ne réagit plus | il se débloque tout seul au bout de 15 s, ou dès que vous retouchez un champ du même formulaire |
 | « Page trop ancienne » à l'enregistrement | l'onglet était ouvert depuis plus de trente jours. Rien n'a été enregistré : rouvrez la page |
+| Une vidéo YouTube ajoutée à la galerie n'apparaît pas | la base n'a pas été transformée : le serveur n'a pas redémarré depuis la mise à jour, ou `DATA_DIR` pointe sur une autre base. Le journal de démarrage dit laquelle |
+| « Ce lien YouTube n'est pas reconnu » | l'adresse ne vient pas de YouTube, ou elle a été raccourcie par un autre service. Ouvrez la vidéo sur YouTube et recopiez la barre d'adresse |
+| Les flèches du carrousel n'apparaissent pas | `/js/site.js` ne s'est pas chargé — la galerie reste défilante au doigt, à la molette et au clavier |
+| Une image de galerie est en noir et blanc | elle a été envoyée avant la version 6, ou reprise depuis la médiathèque. Renvoyez le fichier depuis la section galerie |
 
 ---
 
@@ -466,9 +500,11 @@ src/
     admin/api/      toutes les écritures
     media/          sert les fichiers téléversés
     api/contact.ts  réception du formulaire
-  components/       Bandeau, Media, VideoFond, FacadeYoutube, Grain, Lignes
+  components/       Bandeau, Media, VideoFond, FacadeYoutube, Carrousel,
+                    Grain, Lignes
   layouts/          Base (site), Admin (back-office)
-  lib/              db, auth, media, admin, motdepasse, schema, env
+  lib/              db, auth, media, admin, motdepasse, schema, env,
+                    migrations (transforme une base déjà remplie)
   styles/           tokens.css (la direction artistique), base.css,
                     transitions.css (le passage d'une page à l'autre), admin.css
 scripts/            migrate, seed, creer-compte, sauvegarde, verif, polices
@@ -480,6 +516,31 @@ valeurs d'un seul bleu plus un réactif, trois fontes, une échelle
 typographique de rapport 1,25. **N'introduisez pas de couleur hors de cette
 liste** — c'est la retenue chromatique qui fait le style, et `npm run verif`
 refusera toute variable inconnue.
+
+## Mettre à jour une base déjà remplie
+
+Le schéma de départ (`src/lib/schema.mjs`) ne s'applique qu'aux tables
+absentes : il ne sait pas modifier une table qui existe déjà et contient
+des données. Les changements de forme passent donc par
+`src/lib/migrations.mjs`, une liste numérotée de transformations.
+
+Ce qu'il faut en savoir :
+
+- elles s'exécutent **au démarrage du serveur**, avant la première requête ;
+- l'état est tenu par `PRAGMA user_version` dans la base elle-même, lu et
+  écrit dans la même transaction que le travail — deux processus qui
+  démarrent ensemble ne peuvent pas migrer deux fois ;
+- chacune est **rejouable sans risque** : une base déjà à jour ne bouge pas ;
+- le journal affiche `[db] migration appliquée : …`, une ligne par
+  transformation, la première fois seulement ;
+- les clés étrangères sont contrôlées avant validation : si une ligne était
+  devenue orpheline, la transaction est annulée et le serveur refuse de
+  démarrer plutôt que de servir une base abîmée.
+
+En clair : rien à taper. Mais **sauvegardez avant** (`npm run sauvegarde`)
+— c'est le seul moment où le fichier de base est réécrit.
+
+---
 
 ## Commandes
 

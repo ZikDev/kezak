@@ -63,7 +63,12 @@
      d'attente se seraient recalés sur le haut du document — donc auraient
      disparu de l'écran sur une page défilée, au moment précis où le fil
      est censé rassurer. */
-  html.replis.part body {
+  /* L'estompage porte sur le contenu, pas sur « body ».
+     Sur « body », l'opacité s'appliquait à TOUS ses descendants — donc au
+     fil d'attente, ramené à 1,7:1 sur le fond, c'est-à-dire invisible, au
+     moment précis où il sert à rassurer. Et l'opacité crée un contexte
+     d'empilement : aucun « z-index » ne l'aurait sorti de là. */
+  html.replis.part body > *:not(.fil):not(.evitement) {
     opacity: 0.22;
     transition: opacity 320ms var(--courbe);
   }
@@ -103,7 +108,7 @@
   }
 
   html.replis body,
-  html.replis.part body {
+  html.replis.part body > * {
     animation: none;
     opacity: 1;
     transition: none;
