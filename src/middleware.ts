@@ -147,6 +147,35 @@ export const onRequest = defineMiddleware(async (context, next) => {
   // contenu et sans « frame-ancestors ».
   const refus = (r: Response) => enTetesSecurite(r, versAdmin, EN_PROD);
 
+  /* --- Un seul nom de domaine -------------------------------------
+     « www.kezak.ch » et « kezak.ch » servent le même site : pour un
+     moteur de recherche c'est du contenu dupliqué, et pour un visiteur
+     ce sont deux sessions distinctes — se connecter à l'admin sur l'une
+     ne connecte pas sur l'autre. On choisit donc une adresse, celle sans
+     « www », et l'autre y renvoie définitivement.
+
+     La règle ne regarde que le préfixe et garde le reste de l'adresse
+     tel quel : l'URL de prévisualisation de l'hébergeur, le domaine de
+     test et le développement local ne sont pas concernés, et le chemin
+     comme les paramètres sont préservés.
+
+     Seules les requêtes de lecture sont redirigées. Un 301 sur un envoi
+     de formulaire le transformerait en simple lecture et en perdrait le
+     contenu — de toute façon le formulaire n'est atteint qu'après une
+     page, donc déjà sur la bonne adresse. */
+  if ((request.method === 'GET' || request.method === 'HEAD') && url.hostname.startsWith('www.')) {
+    const cible = new URL(url);
+    cible.hostname = url.hostname.slice(4);
+    // Réponse construite à la main : « Response.redirect » rend ses
+    // en-têtes immuables, et on n'y ajouterait plus rien.
+    return refus(
+      new Response(null, {
+        status: 301,
+        headers: { Location: cible.href, 'Cache-Control': 'no-store' },
+      })
+    );
+  }
+
   /* --- Session ---------------------------------------------------- */
   const jeton = cookies.get(COOKIE_SESSION)?.value;
   locals.utilisateur = utilisateurDeSession(jeton);
@@ -197,14 +226,35 @@ export const onRequest = defineMiddleware(async (context, next) => {
       );
     }
 
-    // Origine : une requête venue d'un autre site est rejetée d'emblée.
+    /**
+     * Origine : une requête venue d'un autre site est rejetée d'emblée.
+     *
+     * On compare le nom d'hôte seul, jamais le protocole. Derrière un proxy
+     * qui termine le HTTPS, l'application reçoit la requête en clair : le
+     * navigateur annonce « https://kezak.ch » et l'application se croit sur
+     * « http://kezak.ch ». Comparer les deux en entier refuserait tous les
+     * envois de formulaire du site — c'est exactement ce que faisait la
+     * protection intégrée d'Astro, désactivée dans astro.config.mjs.
+     *
+     * Et on accepte deux hôtes : celui de la requête, et celui du domaine
+     * configuré. Le second couvre le cas où le proxy présente à
+     * l'application un hôte interne plutôt que le vrai.
+     */
     const origine = request.headers.get('origin');
     if (origine) {
+      const hotesAutorises = new Set([url.host]);
       try {
-        if (new URL(origine).host !== url.host) {
-          return refus(new Response('Origine refusée', { status: 403 }));
-        }
+        if (process.env.SITE_URL) hotesAutorises.add(new URL(process.env.SITE_URL).host);
       } catch {
+        /* SITE_URL mal formée : on s'en tient à l'hôte de la requête */
+      }
+      let hoteOrigine = '';
+      try {
+        hoteOrigine = new URL(origine).host;
+      } catch {
+        hoteOrigine = '';
+      }
+      if (!hoteOrigine || !hotesAutorises.has(hoteOrigine)) {
         return refus(new Response('Origine refusée', { status: 403 }));
       }
     }

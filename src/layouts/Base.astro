@@ -22,7 +22,20 @@ const r = tousReglages();
 const site = r.site_nom || 'Kezak';
 const titreComplet = titre === site ? site : `${titre} — ${site}`;
 const desc = description || r.seo_description || '';
-const url = Astro.url.href;
+
+/**
+ * L'adresse canonique de la page.
+ *
+ * Elle était prise sur `Astro.url.href`, et c'est le même piège que la
+ * protection anti-CSRF : derrière un proxy qui termine le HTTPS,
+ * l'application reçoit la requête en clair et `Astro.url` commence par
+ * « http:// ». Les balises canoniques et Open Graph annonçaient donc une
+ * adresse non sécurisée — de quoi brouiller le référencement et les
+ * aperçus de partage. On repart du domaine configuré, et on n'emprunte à
+ * la requête que le chemin et les paramètres.
+ */
+const domaine = process.env.SITE_URL || Astro.site?.href || Astro.url.origin;
+const url = new URL(Astro.url.pathname + Astro.url.search, domaine).href;
 ---
 
 <!doctype html>

@@ -1,5 +1,72 @@
 # Ce qui a été corrigé
 
+## Version 5.1 — ce que la mise en ligne a révélé
+
+Quatre corrections, toutes venues du passage en production. Aucune ne
+pouvait se voir en local : elles tiennent toutes au proxy qui se trouve
+devant l'application chez l'hébergeur.
+
+**1. Impossible de se connecter à l'administration — bloquant.**
+Toute soumission de formulaire répondait *Cross-site POST form submissions
+are forbidden*, sur une page blanche, en anglais. C'est la protection
+anti-CSRF intégrée d'Astro 5, active par défaut : elle compare l'en-tête
+« Origin » à l'URL de la requête, **protocole compris**. Or le proxy
+termine le HTTPS et transmet la requête en clair : le navigateur annonce
+`https://kezak.ch`, l'application se croit sur `http://kezak.ch`, les deux
+diffèrent, tout est refusé. La connexion à l'admin et le formulaire de
+contact étaient touchés.
+
+Elle est désactivée dans `astro.config.mjs`, au profit de celle du
+middleware, qui était déjà là et qui en fait davantage : jeton à double
+soumission comparé en temps constant, contrôle d'origine sur le nom
+d'hôte seul, cookies en `SameSite=Lax`, et cela sur **toutes** les
+méthodes mutantes là où Astro ne regarde que trois types de contenu. Le
+raisonnement complet est écrit dans le fichier de configuration, à
+l'endroit où la décision se lit.
+
+**2. Le contrôle d'origine du middleware aurait échoué ensuite — sérieux.**
+Il comparait l'hôte de l'en-tête « Origin » au seul hôte de la requête.
+Si le proxy présente à l'application un hôte interne plutôt que le vrai
+nom de domaine, un envoi parfaitement légitime devenait « Origine
+refusée » — la même panne, avec un autre message. Le middleware accepte
+désormais deux hôtes : celui de la requête et celui de `SITE_URL`.
+*Vérifié en exécutant la logique sur sept cas : les quatre situations
+légitimes passent, les trois tentatives depuis un autre site sont
+refusées, y compris un sous-domaine trompeur du genre
+`kezak.ch.mechant.example`.*
+
+**3. Les adresses canoniques annonçaient du HTTP — mineur.**
+Même cause : `Astro.url.href` commence par `http://` derrière le proxy.
+Les balises `canonical` et `og:url` donnaient donc une adresse non
+sécurisée, ce qui brouille le référencement et les aperçus de partage.
+Elles repartent maintenant du domaine configuré, et n'empruntent à la
+requête que le chemin et les paramètres.
+
+**4. `www.kezak.ch` renvoie vers `kezak.ch` — ajout.**
+La méthode habituelle passe par un `.htaccess`, qui ne s'applique pas à
+un site Node.js. La redirection est donc faite par le middleware, en 301,
+en conservant chemin, paramètres et ancre. Elle ne regarde que le préfixe
+`www.` : l'URL de prévisualisation de l'hébergeur et le développement
+local ne sont pas concernés. Sans quoi le site aurait répondu sous deux
+adresses — contenu dupliqué pour les moteurs, et deux sessions distinctes
+pour qui se connecte à l'administration.
+
+**Au passage, deux dépendances relevées.** `sharp` et `nodemailer` sont
+les deux seules bibliothèques auxquelles parviennent des données non
+maîtrisées — les octets d'une image téléversée, le nom et l'adresse tapés
+dans le formulaire de contact. Elles passent en 0.35.4 et 10.x, les
+versions corrigées. L'import de nodemailer est rendu insensible à la
+façon dont le paquet est publié, CommonJS ou ESM.
+
+Astro reste en 5 : les failles annoncées passent toutes par des
+fonctionnalités que ce site n'utilise pas — `define:vars`, attributs
+étalés, directives `transition:*`, slots nommés dynamiques, îlots,
+option `base`, composant `Image` d'`astro:assets` — ce qui a été vérifié
+fichier par fichier. La montée en version 7 demande deux paliers majeurs
+et une session dédiée.
+
+---
+
 ## Version 5
 
 Quatre demandes, plus un audit complet de sécurité et d'affichage. Le
