@@ -79,6 +79,13 @@
   --gouttiere: clamp(1.25rem, 0.5rem + 3.4vw, 5rem);
   /* Borne de repli pour les rares blocs qui doivent rester centrés. */
   --largeur-lecture: 82rem;
+  /* La largeur d'une planche : la colonne de marge (17rem), la gouttière
+     de la grille, et la colonne de lecture. Bornée et CENTRÉE — sans quoi,
+     sur un grand écran, toute la page de lecture se tasse contre le bord
+     gauche et laisse un demi-écran vide à droite. Seuls le héros et les
+     écrans d'accueil restent calés sur les bords : c'est là que l'on veut
+     l'information dans les coins, pas dans un texte suivi. */
+  --largeur-planche: 84rem;
   --largeur-max: 90rem; /* conservé pour compatibilité */
   --hauteur-bandeau: 3.875rem;
 

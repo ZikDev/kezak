@@ -31,7 +31,7 @@ const portrait = media(Number(r.portrait_id) || 0);
   <div class="planche" data-mode="planche">
     {
       lesPrestations.length > 0 && (
-        <section class="contenu bloc differe" aria-labelledby="s-prestations">
+        <section class="contenu contenu--planche bloc differe" aria-labelledby="s-prestations">
           <div class="bloc__tete">
             <p class="etiquette etiquette--accent" id="s-prestations">01 — Ce que je fais</p>
             <p class="mono">{r.prestations_note || 'Périmètre fermé'}</p>
@@ -52,7 +52,7 @@ const portrait = media(Number(r.portrait_id) || 0);
 
     {
       laMethode.length > 0 && (
-        <section class="contenu bloc deux-colonnes differe" aria-labelledby="s-methode">
+        <section class="contenu contenu--planche bloc deux-colonnes differe" aria-labelledby="s-methode">
           <aside class="marge">
             <p class="etiquette etiquette--accent" id="s-methode">02 — Comment je travaille</p>
             <hr class="filet" />
@@ -76,7 +76,7 @@ const portrait = media(Number(r.portrait_id) || 0);
 
     {
       lesQuestions.length > 0 && (
-        <section class="contenu bloc deux-colonnes differe" aria-labelledby="s-faq">
+        <section class="contenu contenu--planche bloc deux-colonnes differe" aria-labelledby="s-faq">
           <aside class="marge">
             <p class="etiquette etiquette--accent" id="s-faq">03 — Questions fréquentes</p>
             <hr class="filet" />
@@ -100,7 +100,7 @@ const portrait = media(Number(r.portrait_id) || 0);
 
   {
     leParcours.length > 0 && (
-      <section class="contenu bloc deux-colonnes differe" aria-labelledby="s-parcours">
+      <section class="contenu contenu--planche bloc deux-colonnes differe" aria-labelledby="s-parcours">
         <p class="etiquette etiquette--accent" id="s-parcours">04 — Le parcours</p>
         <ol class="parcours">
           {leParcours.map((p) => (
@@ -114,7 +114,7 @@ const portrait = media(Number(r.portrait_id) || 0);
     )
   }
 
-  <div class="contenu differe differe--court">
+  <div class="contenu contenu--planche differe differe--court">
     <aside class="appel">
       <div>
         <h2 class="appel__titre">{r.appel_titre || 'Dites-moi ce que vous avez en tête.'}</h2>
@@ -207,15 +207,17 @@ const portrait = media(Number(r.portrait_id) || 0);
     gap: var(--e-4);
     flex-wrap: wrap;
   }
-  /* Deux colonnes bornées, calées sur le bord gauche : le surplus de
-     largeur reste vide à droite, et les filets, eux, traversent tout
-     l'écran. C'est la composition d'une planche — marge, colonne de
-     lecture, blanc — et non une boîte centrée qui flotte. */
+  /* Deux colonnes bornées : marge, gouttière, colonne de lecture. Elles
+     étaient calées sur le bord gauche de l'écran, l'excédent restant vide
+     à droite — sur un moniteur large, une page de texte plaquée dans un
+     coin. Le couple est centré ; les filets, eux, traversent toujours
+     toute la largeur de la planche. */
   .deux-colonnes {
     display: grid;
     grid-template-columns: minmax(0, 17rem) minmax(0, 62rem);
     gap: var(--e-6);
     align-items: start;
+    justify-content: center;
   }
   .marge {
     display: flex;

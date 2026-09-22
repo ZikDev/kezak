@@ -31,7 +31,7 @@ const echeances = ['Pas de date fixe', 'Dans le mois', 'Dans les trois mois', 'P
   </header>
 
   <div class="planche" data-mode="planche">
-    <div class="contenu grille">
+    <div class="contenu contenu--planche grille">
       <div class="colonne-formulaire">
         {
           envoye ? (
@@ -249,24 +249,17 @@ const echeances = ['Pas de date fixe', 'Dans le mois', 'Dans les trois mois', 'P
     padding-block: var(--e-7);
   }
   /* Le formulaire à gauche, les coordonnées calées contre le bord droit :
-     l'espace supplémentaire d'un grand écran passe entre les deux, pas
-     dans une marge morte. */
+     l'espace supplémentaire passe entre les deux, pas dans une marge
+     morte. L'ensemble est borné à la largeur d'une planche (classe
+     « contenu--planche ») : sans ce plafond, « space-between » écartait
+     le formulaire de ses coordonnées d'autant que l'écran était large,
+     et l'on ne pouvait plus les regarder ensemble. */
   .grille {
     display: grid;
     grid-template-columns: minmax(0, 46rem) minmax(0, 22rem);
     justify-content: space-between;
     gap: var(--e-6);
     align-items: start;
-  }
-  /* Au-delà de 1760 px, « space-between » séparait le formulaire de ses
-     coordonnées de plus de deux mille pixels : deux blocs qu'on ne peut
-     plus regarder ensemble. Passé ce seuil, l'ensemble se plafonne et se
-     centre. En dessous, rien ne change. */
-  @media (min-width: 110rem) {
-    .grille {
-      max-width: var(--largeur-lecture);
-      margin-inline: auto;
-    }
   }
 
   .formulaire {

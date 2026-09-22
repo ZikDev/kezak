@@ -69,7 +69,7 @@ const metas = [
 
     {
       metas.length > 0 && (
-        <div class="contenu bande-meta">
+        <div class="contenu contenu--planche bande-meta">
           {metas.map(([k, v]) => (
             <div class="bande-meta__case">
               <p class="etiquette">{k}</p>
@@ -82,7 +82,7 @@ const metas = [
 
     {
       projet.youtube && (
-        <div class="contenu bloc-video differe">
+        <div class="contenu contenu--planche bloc-video differe">
           <FacadeYoutube youtube={projet.youtube} titre={projet.titre} />
         </div>
       )
@@ -90,7 +90,7 @@ const metas = [
 
     <!-- Bascule sur le mode planche : c'est ici, et seulement ici, qu'on lit. -->
     <div class="planche differe differe--long" data-mode="planche">
-      <div class="contenu planche__grille">
+      <div class="contenu contenu--planche planche__grille">
         <aside class="marge">
           {
             faits.length > 0 && (
@@ -149,7 +149,7 @@ const metas = [
 
       {
         credits.length > 0 && (
-          <div class="contenu planche__grille generique">
+          <div class="contenu contenu--planche planche__grille generique">
             <aside class="marge">
               <p class="etiquette etiquette--accent">Générique</p>
               <hr class="filet" />
@@ -171,7 +171,7 @@ const metas = [
       }
     </div>
 
-    <nav class="sorties contenu differe differe--court" aria-label="Suite">
+    <nav class="sorties contenu contenu--planche differe differe--court" aria-label="Suite">
       {
         suivant && suivant.id !== projet.id && (
           <a class="sortie sortie--grande" href={`/projets/${suivant.slug}`}>
@@ -304,10 +304,10 @@ const metas = [
   }
   .bloc-video :global(.yt) {
     max-width: 52rem;
-    /* Calée à gauche, comme la colonne de lecture. Centrée sur la largeur
-       de l'écran, elle se retrouvait entièrement à droite du texte sur un
-       grand moniteur, alignée sur rien. */
-    margin-inline: 0;
+    /* Centrée dans la planche, et non plus calée contre son bord gauche :
+       la planche étant elle-même centrée, l'axe de la page est enfin le
+       même du héros aux trois sorties. */
+    margin-inline: auto;
   }
 
   /* --- Mode planche ------------------------------------------------ */
@@ -321,6 +321,11 @@ const metas = [
     grid-template-columns: minmax(0, 17rem) minmax(0, 62rem);
     gap: var(--e-6);
     align-items: start;
+    /* Les deux colonnes ont une largeur bornée : sans cela, elles se
+       plaquaient contre le bord gauche de l'écran dès que celui-ci
+       dépassait la largeur d'une planche. Le couple marge + lecture est
+       centré, et c'est lui qui donne l'axe de la page. */
+    justify-content: center;
   }
   .marge {
     display: flex;
@@ -389,9 +394,10 @@ const metas = [
     color: var(--texte-doux);
   }
 
-  /* La grille a laissé la place au carrousel : une seule image n'occupe
-     plus toute la planche, et aucune n'est rognée. Le composant porte sa
-     propre mise en forme ; il ne reste ici que sa place dans la page. */
+  /* La galerie est le seul bloc de la planche qui garde toute la largeur,
+     et c'est volontaire : ses deux flèches se tiennent aux bords de la
+     page, l'image respire entre elles. Le composant porte sa propre mise
+     en forme ; il ne reste ici que sa place dans la page. */
   .galerie {
     margin-top: var(--e-7);
   }

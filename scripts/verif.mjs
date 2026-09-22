@@ -66,7 +66,7 @@ const tokens = new Set(
 );
 /* Variables locales à un composant, posées en style en ligne : elles
    n'ont pas à figurer dans la palette. */
-const locales = new Set(['ratio', 'repli', 'degrade', 'voile', 'voile-etroit', 'ajuste', 'h-vue']);
+const locales = new Set(['ratio', 'repli', 'degrade', 'voile', 'voile-etroit', 'ajuste', 'h-vue', 'voie-fleche']);
 for (const f of [...astro, ...fichiers.filter((f) => f.endsWith('.css'))]) {
   for (const m of readFileSync(f, 'utf8').matchAll(/var\(--([a-z0-9-]+)/g)) {
     if (!tokens.has(m[1]) && !locales.has(m[1])) {

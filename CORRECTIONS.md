@@ -1,5 +1,80 @@
 # Ce qui a été corrigé
 
+## Version 6.1 — la mise en page, revue
+
+Deux retours après la v6, tous deux justes.
+
+### 1. Le contenu s'était plaqué contre le bord gauche
+
+La version 5 avait supprimé le conteneur centré du site, pour que les
+informations du premier écran atteignent vraiment les coins. C'était le
+bon geste pour un héros ou une séquence d'écrans. C'était le mauvais pour
+une page qui se lit : la marge, la colonne de texte et le générique
+partaient du bord gauche, leur largeur était bornée, et tout ce que
+l'écran avait en plus restait vide à droite. Sur un moniteur large, une
+page de texte poussée dans un coin.
+
+Les blocs de lecture sont de nouveau bornés **et centrés**, sur un axe
+unique : bande d'informations, vidéo, marge + colonne de texte,
+générique, sorties. Le héros, lui, garde toute la largeur — c'est là que
+l'on veut le titre dans le coin bas.
+
+La même correction s'applique au **Studio**, bâti sur la même grille, et
+au **Contact**, dont les deux colonnes s'écartaient l'une de l'autre
+d'autant que l'écran était large (le plafond était posé à 1760 px, ce qui
+laissait la plupart des écrans de bureau s'écarteler).
+
+*Vérifié par rendu :* la planche est mesurée centrée à 1728 px (125 px de
+part et d'autre), et le couple marge + texte tient le milieu de l'écran à
+douze pixels près.
+
+### 2. La galerie était un meuble
+
+Chaque vue portait un fond gris, un filet d'un pixel, et deux flèches en
+boîte posées contre l'image. Trois objets autour d'une photo — et une
+photo qu'on regarde à travers un objet n'est plus regardée.
+
+Tout cela est parti :
+
+- **aucun fond, aucune bordure.** Le média est posé sur la planche. Le
+  vide laissé autour d'une image verticale n'est plus dessiné : il est
+  simplement vide ;
+- **les flèches se tiennent aux deux bords de la page**, à mi-hauteur de
+  l'image, dans une voie qui leur est réservée — une image panoramique ne
+  passe jamais dessous. Elles sont réduites à leur trait, sans cadre ;
+- **l'image est vue en entier**, quelles que soient ses proportions, et
+  centrée dans la scène ;
+- le numéro de vue passe sous l'image, au centre ;
+- sur un téléphone, les flèches descendent de part et d'autre du
+  compteur : elles auraient rogné l'image d'un tiers.
+
+**Trois défauts trouvés en vérifiant, et corrigés :**
+
+1. La voie des flèches était prise en marge *intérieure*. Un conteneur de
+   défilement se coupe à son cadre et non à son contenu : la vue suivante
+   réapparaissait donc dans la voie, sous la flèche, en bande verticale.
+   Elle est prise en marge extérieure.
+2. Le navigateur pose d'office un retrait de 40 px à gauche de toute
+   liste. Il décalait chaque vue d'autant, et la voisine reparaissait par
+   la droite — le même défaut, par une autre porte.
+3. Sur un téléphone, la hauteur de la scène ne tenait compte que de la
+   hauteur de l'écran : une image horizontale y flottait au milieu de
+   trois cents pixels de vide, qu'il fallait faire défiler pour rien. Elle
+   tient maintenant compte des deux dimensions.
+
+*Vérifié par rendu à 1728, 1280 et 390 px, image horizontale, verticale et
+panoramique :* aucune vue voisine visible, aucune flèche sur l'image, la
+dernière position d'accroche correspond exactement à la fin du
+défilement — donc aucune vue inatteignable.
+
+**Deux ajustements au passage.** La vidéo YouTube d'en-tête est centrée
+dans la planche au lieu d'être calée contre son bord gauche. Et une
+galerie d'une seule vue ne réserve plus de voie aux flèches qui
+n'existent pas : l'image prend toute la largeur.
+
+---
+
+
 ## Version 6 — la galerie, les filtres, et l'audit qui a suivi
 
 ### 1. Les filtres de la page « Projets »

@@ -192,6 +192,16 @@ a {
   margin-inline: auto;
 }
 
+/* Un bloc de planche : borné à la largeur de lecture et centré, gouttières
+   comprises. La pleine largeur est juste pour un héros ou une séquence
+   d'écrans, où l'information doit toucher les coins ; elle ne l'est pas
+   pour une page qui se lit — le texte s'y retrouvait collé à gauche, avec
+   le vide à droite pour seul vis-à-vis. */
+.contenu--planche {
+  max-width: calc(var(--largeur-planche) + 2 * var(--gouttiere));
+  margin-inline: auto;
+}
+
 /* Les quatre coins de l'écran : deux lignes, deux extrémités. */
 .coins {
   display: flex;

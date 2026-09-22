@@ -396,9 +396,11 @@ côte :
 | **Reprendre un média du site** | l'image est déjà dans la médiathèque. Attention : si elle y est arrivée en bichromie, elle restera en bichromie |
 | **Coller un lien YouTube** | adresse longue, `youtu.be`, `shorts/`, `live/`, `embed/` ou identifiant seul |
 
-Sur le site, ces vues forment un **carrousel** : une à la fois, flèches de
-part et d'autre, hauteur bornée, images visibles **en entier** — jamais
-recadrées. Au doigt et au clavier, la piste défile même sans JavaScript.
+Sur le site, ces vues forment un **carrousel** : une à la fois, sans cadre
+ni fond, les flèches posées aux deux bords de la page, hauteur bornée,
+images visibles **en entier** — jamais recadrées. Au doigt et au clavier,
+la piste défile même sans JavaScript ; sur un téléphone, les flèches
+passent sous l'image, de part et d'autre du numéro de vue.
 
 > Une image de galerie déjà envoyée avant la version 6 est en bichromie, et
 > l'original n'existe plus. Pour la remettre en couleur, supprimez la vue et
