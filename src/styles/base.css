@@ -1,0 +1,542 @@
+/* ---------------------------------------------------------------
+   Kezak — socle
+   Lineal et Cutive Mono sont auto-hébergés (public/fonts).
+   Lineal : téléchargeable sur velvetyne.fr/fonts/lineal (OFL).
+   Spectral et Cutive Mono : Google Fonts, OFL, à convertir en woff2.
+   --------------------------------------------------------------- */
+
+@font-face {
+  font-family: 'Lineal';
+  src: url('/fonts/Lineal-Thin.woff2') format('woff2');
+  font-weight: 200;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Lineal';
+  src: url('/fonts/Lineal-Light.woff2') format('woff2');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Lineal';
+  src: url('/fonts/Lineal-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Spectral';
+  src: url('/fonts/Spectral-Light.woff2') format('woff2');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Spectral';
+  src: url('/fonts/Spectral-LightItalic.woff2') format('woff2');
+  font-weight: 300;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Spectral';
+  src: url('/fonts/Spectral-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Cutive Mono';
+  src: url('/fonts/CutiveMono-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  background: var(--fond);
+  color: var(--texte);
+  font-family: var(--texte-famille);
+  font-weight: 300;
+  font-size: var(--t-300);
+  line-height: var(--interligne-texte);
+  -webkit-font-smoothing: antialiased;
+  /* Un mot plus large que l'écran se coupe au lieu de déborder. Sans cette
+     règle, « overflow-x: hidden » ci-dessous ne faisait pas disparaître le
+     débordement : il rendait ses dernières lettres définitivement
+     illisibles et non sélectionnables, sur un téléphone étroit. */
+  overflow-wrap: break-word;
+  overflow-x: hidden;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--display);
+  font-weight: 200;
+  line-height: var(--interligne-titre);
+  letter-spacing: var(--ls-titre);
+  margin: 0;
+  text-wrap: balance;
+  /* Un titre long ne doit jamais déborder sur un écran étroit. */
+  overflow-wrap: break-word;
+}
+
+p {
+  margin: 0;
+  max-width: var(--mesure);
+  text-wrap: pretty;
+}
+
+img,
+video,
+svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+a {
+  color: var(--accent);
+}
+
+/* --- Accessibilité ------------------------------------------------ */
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 0;
+}
+
+.evitement {
+  position: absolute;
+  left: var(--gouttiere);
+  top: -100%;
+  z-index: 100;
+  background: var(--accent);
+  color: var(--accent-contraste);
+  padding: var(--e-3) var(--e-4);
+  font-family: var(--mono);
+  font-size: var(--t-100);
+  letter-spacing: var(--ls-etiquette);
+  text-transform: uppercase;
+  text-decoration: none;
+  transition: top var(--duree) var(--courbe);
+}
+.evitement:focus {
+  top: var(--e-3);
+}
+
+.visuellement-cache {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* --- Éléments de la direction artistique -------------------------- */
+
+.mono,
+.etiquette {
+  font-family: var(--mono);
+  font-size: var(--t-100);
+  letter-spacing: var(--ls-etiquette);
+  text-transform: uppercase;
+  color: var(--texte-doux);
+}
+.etiquette--accent {
+  color: var(--accent);
+}
+
+.filet {
+  height: 1px;
+  background: var(--filet);
+  border: 0;
+  margin: 0;
+}
+
+/* --- Le conteneur ---------------------------------------------------
+   Pleine largeur, gouttière pour seule marge. Sur un 27 pouces comme sur
+   un téléphone, ce qui est « dans le coin » est vraiment dans le coin.
+   La lisibilité n'est pas assurée par le conteneur mais par « --mesure »,
+   posée sur les paragraphes : on peut donc ouvrir sans se retrouver avec
+   des lignes de 200 caractères. */
+.contenu {
+  width: 100%;
+  padding-inline: var(--gouttiere);
+}
+
+/* Pour les rares blocs qui gagnent à rester centrés (page d'erreur,
+   colonne unique de lecture). */
+.contenu--centre {
+  max-width: var(--largeur-lecture);
+  margin-inline: auto;
+}
+
+/* Les quatre coins de l'écran : deux lignes, deux extrémités. */
+.coins {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--e-4);
+}
+
+/* Le bouton : un rectangle au trait qui s'inverse. Jamais d'arrondi. */
+.bouton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: var(--e-3) var(--e-5);
+  border: 1px solid var(--accent);
+  background: transparent;
+  color: var(--accent);
+  font-family: var(--mono);
+  font-size: var(--t-100);
+  letter-spacing: var(--ls-etiquette);
+  text-transform: uppercase;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background-color var(--duree) var(--courbe),
+    color var(--duree) var(--courbe);
+}
+.bouton:hover,
+.bouton:focus-visible {
+  background: var(--accent);
+  color: var(--accent-contraste);
+}
+.bouton--plein {
+  background: var(--accent);
+  color: var(--accent-contraste);
+}
+.bouton--plein:hover,
+.bouton--plein:focus-visible {
+  background: transparent;
+  color: var(--accent);
+}
+.bouton--discret {
+  border-color: var(--filet-fort);
+  color: var(--texte);
+}
+.bouton--discret:hover,
+.bouton--discret:focus-visible {
+  background: var(--filet-fort);
+  color: var(--texte);
+}
+
+/* --- Le grain : un filtre, jamais une image ----------------------- */
+
+.grain {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.3;
+  mix-blend-mode: normal;
+}
+
+/* --- Fondu à l'entrée ---------------------------------------------
+   Par défaut le contenu est visible. Le fondu ne s'arme que là où il y a
+   un script pour le désarmer — « scripting: enabled ».
+
+   Mais « scripting: enabled » décrit la capacité du navigateur, pas le
+   succès du chargement : le script peut renvoyer 404, être coupé par un
+   réseau lent ou lever une exception, et tout le contenu resterait alors
+   invisible pour toujours, sans le moindre signe. D'où le filet :
+   une animation qui rend le bloc visible au bout de deux secondes et
+   demie. Le script, lui, pose « js-ok » sur la page dès sa première ligne
+   et annule ce filet — il ne se déclenche donc que s'il n'a vraiment
+   jamais tourné. */
+
+.entree {
+  opacity: 1;
+}
+
+@keyframes secours-visible {
+  to {
+    opacity: 1;
+    transform: none;
+    /* Le bandeau différé se sert du même filet, et il est posé en
+       « pointer-events: none » : sans cette ligne il reviendrait visible
+       mais non cliquable, ce qui est pire qu'absent. */
+    pointer-events: auto;
+  }
+}
+
+@media (scripting: enabled) {
+  .entree {
+    opacity: 0;
+    transform: translateY(1.25rem);
+    transition:
+      opacity var(--duree-lente) var(--courbe),
+      transform var(--duree-lente) var(--courbe);
+    animation: secours-visible 1ms linear 2.5s forwards;
+  }
+  .entree.vu {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Le script tourne : le filet n'a plus lieu d'être. « :not(.panneau) »
+   n'est pas décoratif — les blocs de l'accueil portent leur propre
+   animation de défilement, et une règle plus spécifique l'effacerait. */
+html.js-ok .entree:not(.panneau) {
+  animation: none;
+}
+
+/* Les panneaux de l'accueil sont exclus de la règle ci-dessus parce
+   qu'ils portent leur propre animation de défilement. Mais là où cette
+   animation n'existe pas — Firefox aujourd'hui — le filet restait armé
+   et les trois panneaux devenaient visibles 2,5 secondes après le
+   chargement, sans avoir défilé. Ici, et seulement ici, on le désarme
+   aussi pour eux : c'est l'observateur du script qui prend le relais. */
+@supports not (animation-timeline: view()) {
+  html.js-ok .panneau.entree {
+    animation: none;
+  }
+}
+
+/* --- Le bandeau différé de l'accueil -------------------------------
+   Même raisonnement, et le cas était plus grave : le bandeau était
+   masqué et rendu non cliquable en dur, et seul le script le ramenait.
+   Sans script — ou avec un script qui n'arrive pas — la page d'accueil
+   n'avait plus aucune navigation. Elle en a une maintenant : le bandeau
+   est visible par défaut, il ne se masque que là où un script existe
+   pour le ramener, et le filet le ramène de toute façon. */
+@media (scripting: enabled) {
+  .bandeau--differe {
+    opacity: 0;
+    transform: translateY(-100%);
+    pointer-events: none;
+    animation: secours-visible 1ms linear 2.5s forwards;
+  }
+}
+html.js-ok .bandeau--differe {
+  animation: none;
+}
+
+/* --- Fondu d'un panneau à l'autre ---------------------------------
+   Un voile de la couleur du site, opaque quand le panneau entre et quand
+   il sort, transparent quand il occupe l'écran. Deux panneaux qui se
+   suivent produisent donc un vrai fondu enchaîné.
+
+   Tout est piloté par la position de défilement (« animation-timeline »),
+   sans une ligne de JavaScript : rien à observer, rien à recalculer, et
+   le fondu suit le doigt au lieu de se déclencher par paliers.
+   Les navigateurs qui ne savent pas faire gardent le site tel quel. */
+
+.ecran__fondu {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background: var(--abysse);
+  opacity: 0;
+}
+
+@keyframes fondu-panneau {
+  0% {
+    opacity: 1;
+  }
+  26%,
+  74% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes derive-panneau {
+  0% {
+    opacity: 0.25;
+    transform: translateY(2.2vh);
+  }
+  30%,
+  70% {
+    opacity: 1;
+    transform: none;
+  }
+  100% {
+    opacity: 0.25;
+    transform: translateY(-2.2vh);
+  }
+}
+
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .ecran__fondu {
+      animation: fondu-panneau linear both;
+      animation-timeline: view();
+      animation-range: cover 0% cover 100%;
+    }
+    /* Le contenu dérive légèrement — c'est ce décalage entre le voile et
+       le texte qui donne la profondeur. */
+    .panneau {
+      animation: derive-panneau linear both;
+      animation-timeline: view();
+      animation-range: cover 0% cover 100%;
+    }
+    /* Un panneau qui remplit l'écran est au milieu de sa course : le
+       premier s'affiche donc dégagé dès le chargement, sans réglage
+       particulier. */
+
+    /* Les blocs de l'accueil portaient « panneau » ET « entree » : deux
+       mécanismes pilotaient la même opacité, et l'animation l'emportant
+       toujours sur une transition, le fondu d'entrée et ses 800 ms étaient
+       du code mort ici. On le désarme explicitement — la chorégraphie du
+       défilement suffit, et elle suit le doigt. */
+    .panneau.entree {
+      opacity: 1;
+      transform: none;
+      transition: none;
+      animation-name: derive-panneau;
+    }
+  }
+}
+
+/* Le fil d'attente : il apparaît dès le clic et ne s'arrête qu'une fois
+   la page suivante affichée. C'est le seul retour visible dans les
+   navigateurs qui n'ont pas encore les transitions de document. */
+.fil {
+  position: fixed;
+  inset: 0 0 auto 0;
+  z-index: 200;
+  height: 2px;
+  background: var(--reactif);
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+  opacity: 0;
+  pointer-events: none;
+}
+.fil.actif {
+  opacity: 1;
+  animation: fil-avance 12s cubic-bezier(0.1, 0.8, 0.2, 1) forwards;
+}
+@keyframes fil-avance {
+  0% {
+    transform: scaleX(0);
+  }
+  40% {
+    transform: scaleX(0.7);
+  }
+  100% {
+    transform: scaleX(0.97);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  .entree,
+  .panneau {
+    opacity: 1;
+    transform: none;
+    transition: none;
+    animation: none;
+  }
+  .ecran__fondu {
+    animation: none;
+    opacity: 0;
+  }
+  .fil.actif {
+    animation: none;
+    transform: scaleX(0.5);
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* --- Écrans pleine hauteur --------------------------------------- */
+
+.ecran {
+  position: relative;
+  /* 100vh d'abord : repli pour les navigateurs sans svh (Safari < 15.4).
+     Sans lui, la déclaration suivante est ignorée et la section s'écrase. */
+  min-height: 100vh;
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  /* « clip » et non « hidden ». La différence est invisible — le rognage
+     est le même — mais elle décide du fonctionnement de tout le fondu au
+     défilement : « hidden » fait de la section un conteneur de
+     défilement, et « animation-timeline: view() » cale alors sa
+     chronologie sur cette section, qui ne défile jamais. Résultat, le
+     fondu enchaîné entre les panneaux ne se produisait dans aucun
+     navigateur. « clip » rogne sans créer de conteneur : la chronologie
+     retombe sur la fenêtre, comme prévu.
+     « hidden » reste en première ligne pour Safari 15 et antérieurs. */
+  overflow: hidden;
+  overflow: clip;
+  isolation: isolate;
+}
+
+.ecran__fond {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+}
+.ecran__voile {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+}
+
+/* Les sections basses ne sont peintes qu'à l'approche. */
+.differe {
+  content-visibility: auto;
+  /* Le mot-clé « auto » mémorise la hauteur réellement mesurée : la barre
+     de défilement ne saute plus quand on remonte la page. La réserve
+     initiale, elle, n'est qu'une estimation — et une estimation unique de
+     800 px était fausse des deux côtés : un encadré de 180 px faisait
+     raccourcir la page de 600 px à l'approche, et le corps d'une page
+     projet la faisait s'allonger de plusieurs milliers. D'où deux
+     variantes, à poser selon la taille du bloc. */
+  contain-intrinsic-size: auto 800px;
+}
+.differe--court {
+  contain-intrinsic-size: auto 240px;
+}
+.differe--long {
+  contain-intrinsic-size: auto 2400px;
+}
+
+/* Les ancres ne doivent pas se retrouver sous le bandeau fixe.
+   Exception : un écran plein fait exactement la hauteur de la fenêtre.
+   Lui appliquer une marge de 78 px décalait le saut d'autant — on voyait
+   un bandeau de l'écran précédent en haut, et le bas de l'écran visé
+   passait sous la ligne de flottaison. C'est précisément ce que fait le
+   bouton « Descendre » de l'accueil. */
+:target,
+[id] {
+  scroll-margin-top: calc(var(--hauteur-bandeau) + 1rem);
+}
+.ecran[id],
+.ecran:target {
+  scroll-margin-top: 0;
+}

@@ -1,0 +1,22 @@
+Déposez ici les sept .woff2 :
+
+  Lineal-Thin, Lineal-Light, Lineal-Regular      (velvetyne.fr/fonts/lineal)
+  Spectral-Light, Spectral-LightItalic,
+  Spectral-Regular                               (Google Fonts)
+  CutiveMono-Regular                             (Google Fonts)
+
+Regardez d'abord dans l'archive de la fonderie : elle contient souvent
+déjà un dossier « webfonts » ou « woff2 ».
+
+Si vous n'avez que des .ttf ou .otf, déposez-les ici tels quels, puis
+lancez depuis le dossier du projet :
+
+    npm run polices
+
+La conversion se fait avec Node — rien d'autre à installer. Le script
+renomme au passage vers les sept noms ci-dessus.
+
+Une fois les .woff2 obtenus, supprimez les .ttf et .otf de ce dossier :
+ils sont trois fois plus lourds et n'ont rien à faire en ligne.
+
+Voir l'étape 6 du README.

@@ -1,0 +1,499 @@
+---
+import Base from '../layouts/Base.astro';
+import Grain from '../components/Grain.astro';
+import { etapesContact, tousReglages } from '../lib/db';
+
+const r = tousReglages();
+const etapes = etapesContact();
+const csrf = Astro.locals.csrf;
+const envoye = Astro.url.searchParams.get('envoye') === '1';
+const erreur = Astro.url.searchParams.get('erreur');
+
+const besoins = [
+  'Un site',
+  'De la vidéo',
+  'Du motion design',
+  'Une reprise de site existant',
+  'Je ne sais pas encore',
+];
+const echeances = ['Pas de date fixe', 'Dans le mois', 'Dans les trois mois', 'Plus tard cette année'];
+---
+
+<Base titre="Parlons-en" description={r.contact_description} actif="contact">
+  <header class="heros">
+    <div class="heros__fond"><Grain id="contact" opacite={0.3} /></div>
+    <div class="contenu heros__bloc">
+      <p class="etiquette etiquette--accent">Contact</p>
+      <h1 class="heros__titre">Parlons-en.</h1>
+      <span class="tiret" aria-hidden="true"></span>
+      <p class="heros__texte">{r.contact_intro || ''}</p>
+    </div>
+  </header>
+
+  <div class="planche" data-mode="planche">
+    <div class="contenu grille">
+      <div class="colonne-formulaire">
+        {
+          envoye ? (
+            <div class="confirmation" role="status">
+              <p class="etiquette etiquette--accent">Message envoyé</p>
+              <h2>Merci, c'est bien arrivé.</h2>
+              <p>Vous avez une réponse sous une semaine au maximum, même si c'est pour dire non.</p>
+              <a class="bouton" href="/projets">Voir les projets</a>
+            </div>
+          ) : (
+            <form class="formulaire" method="post" action="/api/contact" data-garder>
+              <input type="hidden" name="csrf" value={csrf} />
+              {/* Pot de miel : invisible pour l'humain, rempli par les robots. */}
+              <div class="pot-de-miel" aria-hidden="true">
+                <label for="site">Ne remplissez pas ce champ</label>
+                <input type="text" id="site" name="site" tabindex="-1" autocomplete="off" />
+              </div>
+              <input type="hidden" name="depart" value={Date.now()} />
+
+              {erreur && (
+                <p class="erreur" role="alert">
+                  {erreur === 'champs'
+                    ? 'Il manque le nom, l’adresse e-mail ou le message.'
+                    : erreur === 'email'
+                      ? 'Cette adresse e-mail ne semble pas valide.'
+                      : erreur === 'trop'
+                        ? 'Trop d’envois en peu de temps. Réessayez dans quelques minutes.'
+                        : 'L’envoi a échoué. Réessayez, ou écrivez directement à ' + (r.email || 'contact@kezak.ch') + '.'}
+                </p>
+              )}
+
+              <div class="formulaire__tete">
+                <p class="etiquette etiquette--accent">Formulaire</p>
+                <p class="mono">* Champs obligatoires</p>
+              </div>
+              <hr class="filet" />
+
+              <div class="duo">
+                <p class="champ">
+                  <label for="nom">Nom et prénom *</label>
+                  <input type="text" id="nom" name="nom" required autocomplete="name" maxlength="120" />
+                </p>
+                <p class="champ">
+                  <label for="orga">Organisation</label>
+                  <input type="text" id="orga" name="orga" autocomplete="organization" maxlength="120" />
+                </p>
+              </div>
+
+              <div class="duo">
+                <p class="champ">
+                  <label for="email">E-mail *</label>
+                  <input type="email" id="email" name="email" required autocomplete="email" maxlength="160" />
+                </p>
+                <p class="champ">
+                  <label for="tel">Téléphone</label>
+                  <input type="tel" id="tel" name="tel" autocomplete="tel" maxlength="40" />
+                </p>
+              </div>
+
+              <fieldset class="choix">
+                <legend>Ce dont vous avez besoin</legend>
+                <div class="choix__liste">
+                  {besoins.map((b, i) => (
+                    <label class="pastille" for={`b${i}`}>
+                      <input type="checkbox" id={`b${i}`} name="besoins" value={b} />
+                      {b}
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+
+              <div class="duo">
+                <p class="champ">
+                  <label for="echeance">Échéance souhaitée</label>
+                  <select id="echeance" name="echeance">
+                    {echeances.map((e) => (
+                      <option>{e}</option>
+                    ))}
+                  </select>
+                </p>
+                <p class="champ">
+                  <label for="budget">Budget envisagé</label>
+                  <input
+                    type="text"
+                    id="budget"
+                    name="budget"
+                    maxlength="80"
+                    placeholder="Même approximatif — ça évite de perdre du temps"
+                  />
+                </p>
+              </div>
+
+              <p class="champ">
+                <label for="corps">Votre projet *</label>
+                <textarea
+                  id="corps"
+                  name="corps"
+                  rows="7"
+                  required
+                  maxlength="4000"
+                  placeholder="Qui vous êtes, ce que vous voulez obtenir, et ce qui existe déjà."
+                ></textarea>
+              </p>
+
+              <label class="accord" for="accord">
+                <input type="checkbox" id="accord" name="accord" required value="1" />
+                <span>
+                  J'accepte que ces informations soient utilisées pour répondre à ma demande. Elles ne
+                  sont ni revendues ni transmises à des tiers.
+                </span>
+              </label>
+
+              <div class="envoi">
+                <button class="bouton bouton--plein" type="submit">Envoyer</button>
+                <span>Réponse sous une semaine au maximum.</span>
+              </div>
+            </form>
+          )
+        }
+      </div>
+
+      <aside class="colonne-infos">
+        <section>
+          <p class="etiquette etiquette--accent">Directement</p>
+          <a class="infos__mail" href={`mailto:${r.email || 'contact@kezak.ch'}`}>{r.email || 'contact@kezak.ch'}</a>
+          {r.telephone && <p class="infos__tel">{r.telephone}</p>}
+          <p class="infos__lieu">{r.contact_lieu || 'Romont, canton de Fribourg. Je me déplace en Suisse romande.'}</p>
+        </section>
+
+        <hr class="filet" />
+
+        {
+          etapes.length > 0 && (
+            <section>
+              <p class="etiquette etiquette--accent">Ce qui se passe ensuite</p>
+              <ol class="etapes">
+                {etapes.map((e, i) => (
+                  <li>
+                    <span class="mono">{String(i + 1).padStart(2, '0')}</span>
+                    <span>{e.texte}</span>
+                  </li>
+                ))}
+              </ol>
+            </section>
+          )
+        }
+
+        <hr class="filet" />
+
+        <section>
+          <p class="etiquette etiquette--accent">Ailleurs</p>
+          <ul class="reseaux mono">
+            {r.reseau_instagram && <li><a href={r.reseau_instagram} rel="me noopener">Instagram</a></li>}
+            {r.reseau_linkedin && <li><a href={r.reseau_linkedin} rel="me noopener">LinkedIn</a></li>}
+            {r.reseau_behance && <li><a href={r.reseau_behance} rel="me noopener">Behance</a></li>}
+          </ul>
+        </section>
+
+        {
+          r.contact_agences && (
+            <>
+              <hr class="filet" />
+              <p class="infos__agences">{r.contact_agences}</p>
+            </>
+          )
+        }
+      </aside>
+    </div>
+  </div>
+</Base>
+
+<style>
+  .heros {
+    position: relative;
+    min-height: 44vh;
+    min-height: 44svh;
+    display: flex;
+    align-items: center;
+    padding-block: calc(var(--hauteur-bandeau) + var(--e-6)) var(--e-6);
+    overflow: hidden;
+    overflow: clip;
+    isolation: isolate;
+  }
+  .heros__fond {
+    position: absolute;
+    inset: 0;
+    z-index: -2;
+    background: radial-gradient(60% 120% at 34% 50%, #2e6e9e 0%, #1b4570 26%, #102846 54%, #0a1428 84%);
+  }
+  .heros__bloc {
+    display: flex;
+    flex-direction: column;
+    gap: var(--e-3);
+    max-width: 42rem;
+  }
+  .heros__titre {
+    font-size: var(--t-800);
+    letter-spacing: 0.06em;
+  }
+  .heros__texte {
+    color: var(--texte-doux);
+    font-size: var(--t-400);
+    margin-top: var(--e-2);
+  }
+  .tiret {
+    display: block;
+    width: 5rem;
+    height: 1px;
+    background: var(--reactif);
+  }
+
+  .planche {
+    background: var(--fond);
+    color: var(--texte);
+    padding-block: var(--e-7);
+  }
+  /* Le formulaire à gauche, les coordonnées calées contre le bord droit :
+     l'espace supplémentaire d'un grand écran passe entre les deux, pas
+     dans une marge morte. */
+  .grille {
+    display: grid;
+    grid-template-columns: minmax(0, 46rem) minmax(0, 22rem);
+    justify-content: space-between;
+    gap: var(--e-6);
+    align-items: start;
+  }
+  /* Au-delà de 1760 px, « space-between » séparait le formulaire de ses
+     coordonnées de plus de deux mille pixels : deux blocs qu'on ne peut
+     plus regarder ensemble. Passé ce seuil, l'ensemble se plafonne et se
+     centre. En dessous, rien ne change. */
+  @media (min-width: 110rem) {
+    .grille {
+      max-width: var(--largeur-lecture);
+      margin-inline: auto;
+    }
+  }
+
+  .formulaire {
+    display: flex;
+    flex-direction: column;
+    gap: var(--e-4);
+  }
+  .formulaire__tete {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--e-4);
+  }
+  .duo {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+    gap: var(--e-4);
+    margin: 0;
+  }
+  .champ {
+    display: flex;
+    flex-direction: column;
+    gap: var(--e-2);
+    margin: 0;
+  }
+  label,
+  legend {
+    font-family: var(--mono);
+    font-size: var(--t-100);
+    letter-spacing: var(--ls-etiquette);
+    text-transform: uppercase;
+    color: var(--texte-doux);
+  }
+  input[type='text'],
+  input[type='email'],
+  input[type='tel'],
+  select,
+  textarea {
+    font-family: var(--texte-famille);
+    font-weight: 300;
+    font-size: var(--t-300);
+    color: var(--texte);
+    background: transparent;
+    /* Jeton dédié : la bordure est ici la seule chose qui signale qu'il y
+       a un champ, elle doit donc tenir 3:1. Avec « --filet » elle était à
+       1,4:1 — on ne voyait pas où commençait la zone de saisie. */
+    border: 1px solid var(--filet-champ);
+    border-radius: 0;
+    padding: var(--e-3);
+    width: 100%;
+    min-height: 48px;
+  }
+  textarea {
+    resize: vertical;
+  }
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--texte-doux);
+  }
+
+  .choix {
+    border: 0;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--e-3);
+  }
+  .choix__liste {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--e-2);
+  }
+  .pastille {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--e-2);
+    min-height: 44px;
+    padding: 0 var(--e-4);
+    border: 1px solid var(--filet);
+    font-family: var(--texte-famille);
+    font-size: var(--t-200);
+    letter-spacing: 0;
+    text-transform: none;
+    color: var(--texte);
+    cursor: pointer;
+  }
+  .pastille:has(input:checked) {
+    border-color: var(--accent);
+  }
+  .pastille input {
+    width: 15px;
+    height: 15px;
+    accent-color: var(--accent);
+  }
+
+  .accord {
+    display: flex;
+    gap: var(--e-3);
+    align-items: flex-start;
+    font-family: var(--texte-famille);
+    font-size: var(--t-200);
+    letter-spacing: 0;
+    text-transform: none;
+    color: var(--texte-doux);
+    cursor: pointer;
+  }
+  .accord input {
+    margin-top: 0.35em;
+    width: 15px;
+    height: 15px;
+    flex: none;
+    accent-color: var(--accent);
+  }
+
+  .envoi {
+    display: flex;
+    align-items: center;
+    gap: var(--e-4);
+    flex-wrap: wrap;
+    margin-top: var(--e-2);
+  }
+  .envoi span {
+    color: var(--texte-doux);
+    font-size: var(--t-200);
+  }
+
+  .pot-de-miel {
+    position: absolute;
+    left: -9999px;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+  }
+
+  .erreur {
+    border-left: 2px solid #b3261e;
+    padding-left: var(--e-3);
+    color: #8c1d18;
+  }
+
+  .confirmation {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--e-3);
+    border: 1px solid var(--accent);
+    padding: var(--e-5);
+  }
+  .confirmation h2 {
+    font-size: var(--t-600);
+  }
+  .confirmation p {
+    color: var(--texte-doux);
+  }
+
+  .colonne-infos {
+    display: flex;
+    flex-direction: column;
+    gap: var(--e-4);
+    border-left: 1px solid var(--filet);
+    padding-left: var(--e-5);
+  }
+  .colonne-infos section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--e-3);
+  }
+  .infos__mail {
+    color: var(--texte);
+    font-size: var(--t-400);
+    text-decoration: none;
+    border-bottom: 1px solid var(--accent);
+    align-self: flex-start;
+  }
+  .infos__tel {
+    font-size: var(--t-400);
+  }
+  .infos__lieu,
+  .infos__agences {
+    color: var(--texte-doux);
+    font-size: var(--t-200);
+  }
+  .infos__agences {
+    font-style: italic;
+  }
+  .etapes {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--e-3);
+  }
+  .etapes li {
+    display: flex;
+    gap: var(--e-3);
+    font-size: var(--t-200);
+  }
+  .etapes .mono {
+    color: var(--texte-doux);
+    flex: none;
+  }
+  .reseaux {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--e-3);
+  }
+  .reseaux a {
+    color: var(--texte-doux);
+    text-decoration: none;
+  }
+  .reseaux a:hover {
+    color: var(--accent);
+  }
+
+  @media (max-width: 61.99rem) {
+    .grille {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .colonne-infos {
+      border-left: 0;
+      padding-left: 0;
+      border-top: 1px solid var(--filet);
+      padding-top: var(--e-5);
+    }
+  }
+</style>

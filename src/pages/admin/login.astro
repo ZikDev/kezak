@@ -1,0 +1,187 @@
+---
+import '../../styles/tokens.css';
+import '../../styles/base.css';
+import '../../styles/admin.css';
+import { cheminInterne } from '../../lib/admin';
+
+if (Astro.locals.utilisateur) return Astro.redirect('/admin', 303);
+
+const csrf = Astro.locals.csrf;
+const suite = cheminInterne(Astro.url.searchParams.get('suite'), '/admin');
+const err = Astro.url.searchParams.get('err');
+const messages: Record<string, string> = {
+  identifiants: 'Adresse ou mot de passe incorrect.',
+  trop: 'Trop de tentatives. Réessayez dans un quart d’heure.',
+  deconnecte: 'Vous êtes déconnecté.',
+};
+---
+
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Connexion — Admin Kezak</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  </head>
+  <body class="connexion">
+    <main class="connexion__boite">
+      <div class="connexion__marque">
+        <span class="connexion__mono" aria-hidden="true">K</span>
+        <span class="connexion__nom">Kezak</span>
+      </div>
+      <h1 class="connexion__titre">Administration</h1>
+
+      {
+        err && (
+          <p
+            class:list={['connexion__message', err !== 'deconnecte' && 'connexion__message--erreur']}
+            role={err === 'deconnecte' ? 'status' : 'alert'}
+          >
+            {messages[err] || 'Connexion impossible.'}
+          </p>
+        )
+      }
+
+      <form method="post" action="/admin/api/login">
+        <input type="hidden" name="csrf" value={csrf} />
+        <input type="hidden" name="suite" value={suite} />
+        <p class="champ">
+          <label for="email">Adresse e-mail</label>
+          <input type="email" id="email" name="email" required autocomplete="username" autofocus />
+        </p>
+        <p class="champ">
+          <label for="mot_de_passe">Mot de passe</label>
+          <input
+            type="password"
+            id="mot_de_passe"
+            name="mot_de_passe"
+            required
+            autocomplete="current-password"
+          />
+        </p>
+        <button class="connexion__bouton" type="submit">Se connecter</button>
+      </form>
+
+      <p class="connexion__note">
+        Aucune inscription, aucune réinitialisation par courriel. Le mot de passe se change
+        depuis le serveur, avec <code>npm run compte</code>.
+      </p>
+    </main>
+  </body>
+</html>
+
+<style>
+  .connexion {
+    min-height: 100vh;
+    min-height: 100svh;
+    display: grid;
+    place-items: center;
+    padding: var(--e-5);
+    background:
+      radial-gradient(60% 60% at 42% 42%, #1b4570 0%, #102846 46%, #0a1428 86%);
+    color: var(--papier);
+  }
+  .connexion__boite {
+    width: min(26rem, 100%);
+    border: 1px solid var(--filet-nuit-fort);
+    background: rgba(10, 20, 40, 0.9);
+    background: color-mix(in srgb, var(--abysse) 86%, transparent);
+    padding: var(--e-6) var(--e-5);
+    display: flex;
+    flex-direction: column;
+    gap: var(--e-4);
+  }
+  .connexion__marque {
+    display: flex;
+    align-items: center;
+    gap: var(--e-3);
+  }
+  .connexion__mono {
+    width: 1.4rem;
+    height: 1.4rem;
+    display: grid;
+    place-items: center;
+    border: 1px solid var(--reactif);
+    color: var(--reactif);
+    font-family: var(--display);
+    font-size: 0.8rem;
+    line-height: 1;
+  }
+  .connexion__nom {
+    font-family: var(--display);
+    font-weight: 300;
+    letter-spacing: var(--ls-logo-petit);
+    text-transform: uppercase;
+  }
+  .connexion__titre {
+    font-family: var(--display);
+    font-weight: 200;
+    font-size: var(--t-600);
+    margin: 0;
+  }
+  .connexion form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--e-4);
+  }
+  .champ {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    margin: 0;
+  }
+  .connexion label {
+    font-family: var(--mono);
+    font-size: var(--t-100);
+    letter-spacing: var(--ls-etiquette);
+    text-transform: uppercase;
+    color: var(--brume);
+  }
+  .connexion input {
+    font-family: var(--texte-famille);
+    font-size: 1rem;
+    color: var(--papier);
+    background: transparent;
+    border: 1px solid var(--filet-nuit-fort);
+    border-radius: 0;
+    padding: 0.8rem;
+    min-height: 48px;
+  }
+  .connexion input:focus-visible {
+    outline: 2px solid var(--reactif);
+    outline-offset: 2px;
+  }
+  .connexion__bouton {
+    min-height: 48px;
+    background: var(--reactif);
+    color: var(--abysse);
+    border: 1px solid var(--reactif);
+    border-radius: 0;
+    font-family: var(--mono);
+    font-size: var(--t-100);
+    letter-spacing: var(--ls-etiquette);
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+  .connexion__message {
+    border-left: 2px solid var(--reactif);
+    padding-left: var(--e-3);
+    margin: 0;
+    color: var(--brume);
+  }
+  .connexion__message--erreur {
+    border-color: #e06c5f;
+    color: #f0b6ae;
+  }
+  .connexion__note {
+    color: var(--ardoise);
+    font-size: var(--t-200);
+    margin: 0;
+  }
+  .connexion code {
+    font-family: var(--mono);
+    color: var(--brume);
+  }
+</style>

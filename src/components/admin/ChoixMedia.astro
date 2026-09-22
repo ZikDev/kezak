@@ -1,0 +1,116 @@
+---
+/**
+ * Choisir un média — avec l'image sous les yeux.
+ *
+ * Une liste déroulante qui affiche « #14 photo.jpg » ne dit rien : on
+ * choisit au hasard, on enregistre, on va voir sur le site, et on
+ * recommence. Chaque option porte donc l'adresse de sa vignette, et le
+ * script de l'admin l'affiche à côté du champ, à chaque changement.
+ *
+ * Si le script ne part pas, il reste une liste déroulante qui fonctionne.
+ */
+interface Props {
+  id: string;
+  /** Nom du champ : « c_media_id » pour une colonne, « r_portrait_id » pour un réglage. */
+  nom: string;
+  libelle: string;
+  valeur?: number | string | null;
+  /** Ce que la liste propose. */
+  genre?: 'image' | 'video' | 'tous';
+  medias: Record<string, any>[];
+  aide?: string;
+  vide?: string;
+}
+
+const {
+  id,
+  nom,
+  libelle,
+  valeur = null,
+  genre = 'image',
+  medias,
+  aide = '',
+  vide = '— aucun —',
+} = Astro.props;
+
+const choix = medias.filter((m) => genre === 'tous' || m.type === genre);
+const courant = String(valeur ?? '');
+
+/** Vignette d'un média : la variante la plus légère pour une image, le fichier pour une vidéo. */
+function apercu(m: Record<string, any>): string {
+  if (m.type === 'video') return `/media/${m.fichier}`;
+  try {
+    const v = JSON.parse(m.variantes || '{}');
+    const nomFichier = v.webp400 || v.webp800 || v.webp1600;
+    return nomFichier ? `/media/${nomFichier}` : '';
+  } catch {
+    return '';
+  }
+}
+
+const actuel = choix.find((m) => String(m.id) === courant);
+const srcActuel = actuel ? apercu(actuel) : '';
+
+/**
+ * Le libellé d'une option. Sans texte alternatif, on lisait
+ * « #14 — a3f9c2e1.webp », qui ne désigne rien. À défaut d'alternative,
+ * on donne au moins le type et les dimensions.
+ */
+function libelleOption(m: Record<string, any>): string {
+  const nom = (m.alt || '').trim() || (m.legende || '').trim();
+  const taille = m.largeur && m.hauteur ? ` ${m.largeur}×${m.hauteur}` : '';
+  return nom
+    ? `#${m.id} — ${nom}`
+    : `#${m.id} — ${m.type === 'video' ? 'vidéo' : 'image'} sans description${taille}`;
+}
+
+const idAide = `${id}-aide`;
+---
+
+<div class="adm__media">
+  <figure class:list={['adm__apercu', !srcActuel && 'adm__apercu--vide']}>
+    {
+      srcActuel &&
+        (actuel?.type === 'video' ? (
+          <video
+            src={srcActuel}
+            muted
+            loop
+            playsinline
+            preload="metadata"
+            aria-label={`Aperçu de ${libelleOption(actuel)}`}
+            controls
+          />
+        ) : (
+          <img src={srcActuel} alt="" loading="lazy" />
+        ))
+    }
+  </figure>
+
+  <p class="adm__champ">
+    <label for={id}>{libelle}</label>
+    <select id={id} name={nom} data-media aria-describedby={aide ? idAide : undefined}>
+      <option value="" data-apercu="" data-genre="">{vide}</option>
+      {
+        choix.map((m) => (
+          <option
+            value={m.id}
+            selected={String(m.id) === courant}
+            data-apercu={apercu(m)}
+            data-genre={m.type}
+          >
+            {libelleOption(m)}
+          </option>
+        ))
+      }
+    </select>
+    {aide && <span class="adm__note" id={idAide}>{aide}</span>}
+    {
+      choix.length === 0 && (
+        <span class="adm__note">
+          Aucun média de ce type pour l'instant. Envoyez-en un depuis <a href="/admin/medias">Médias</a>.
+        </span>
+      )
+    }
+  </p>
+</div>

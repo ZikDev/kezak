@@ -1,0 +1,53 @@
+---
+import Base from '../layouts/Base.astro';
+import Grain from '../components/Grain.astro';
+---
+
+<Base titre="Page introuvable">
+  <section class="ecran perdu">
+    <div class="perdu__fond"><Grain id="404" opacite={0.3} /></div>
+    <div class="contenu perdu__bloc">
+      <p class="etiquette etiquette--accent">Erreur 404</p>
+      <h1>Cette page n'existe pas.</h1>
+      <p class="perdu__texte">
+        Elle a peut-être changé d'adresse lors de la refonte du site.
+      </p>
+      <div class="perdu__actions">
+        <a class="bouton bouton--plein" href="/projets">Voir les projets</a>
+        <a class="bouton bouton--discret" href="/">Retour à l'accueil</a>
+      </div>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .perdu {
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+  }
+  .perdu__fond {
+    position: absolute;
+    inset: 0;
+    z-index: -2;
+    background: radial-gradient(56% 50% at 50% 46%, #1b4570 0%, #102846 46%, #0a1428 84%);
+  }
+  .perdu__bloc {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--e-4);
+  }
+  .perdu h1 {
+    font-size: var(--t-700);
+  }
+  .perdu__texte {
+    color: var(--texte-doux);
+  }
+  .perdu__actions {
+    display: flex;
+    gap: var(--e-3);
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+</style>

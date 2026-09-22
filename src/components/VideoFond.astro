@@ -1,0 +1,116 @@
+---
+import Grain from './Grain.astro';
+
+/**
+ * Fond d'écran : une image poster s'affiche immédiatement, la vidéo n'est
+ * chargée qu'à l'approche du scroll, et pas du tout si l'internaute a
+ * demandé moins d'animations ou active l'économie de données.
+ */
+interface Props {
+  id: string;
+  video?: Record<string, any> | null;
+  poster?: Record<string, any> | null;
+  /** Dégradé de repli — c'est lui seul sur l'écran d'accueil. */
+  degrade?: string;
+  voile?: string;
+  /**
+   * Voile de remplacement sous 62 rem.
+   *
+   * Les voiles horizontaux sont calculés pour un écran large : le texte
+   * occupe le premier tiers, là où le voile est dense, et la photo respire
+   * à droite. Sur un téléphone, le même dégradé s'étale sur toute la
+   * largeur et la fin de chaque ligne se retrouve posée sur la partie
+   * claire de l'image — les derniers mots disparaissent. D'où un second
+   * voile, vertical, pour les écrans étroits.
+   */
+  voileEtroit?: string;
+  grain?: number;
+}
+
+const {
+  id,
+  video = null,
+  poster = null,
+  degrade = 'radial-gradient(56% 50% at 42% 44%, #2e6e9e 0%, #1b4570 26%, #102846 52%, #0a1428 82%)',
+  voile = '',
+  voileEtroit = '',
+  grain = 0.3,
+} = Astro.props;
+
+let posterUrl = '';
+try {
+  const v = poster?.variantes ? JSON.parse(poster.variantes) : {};
+  const nom = v.webp1600 || v.webp800;
+  if (nom) posterUrl = `/media/${nom}`;
+} catch {
+  posterUrl = '';
+}
+---
+
+<div class="ecran__fond" style={`--degrade:${degrade}`}>
+  <div class="fond__couleur"></div>
+  {
+    video && (
+      <video
+        class="fond__video"
+        data-video={`/media/${video.fichier}`}
+        poster={posterUrl || undefined}
+        muted
+        loop
+        playsinline
+        preload="none"
+        aria-hidden="true"
+        tabindex="-1"
+      />
+    )
+  }
+  <Grain id={id} opacite={grain} />
+</div>
+{
+  voile && (
+    <div
+      class="ecran__voile"
+      style={`--voile:${voile};--voile-etroit:${voileEtroit || voile}`}
+    />
+  )
+}
+
+<style>
+  .ecran__voile {
+    background: var(--voile);
+  }
+  @media (max-width: 61.99rem) {
+    .ecran__voile {
+      background: var(--voile-etroit);
+    }
+  }
+  .ecran__fond {
+    position: absolute;
+    inset: 0;
+    z-index: -2;
+    overflow: hidden;
+    overflow: clip;
+  }
+  .fond__couleur {
+    position: absolute;
+    inset: 0;
+    background: var(--degrade);
+  }
+  .fond__video {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0;
+    transition: opacity 800ms var(--courbe);
+  }
+  .fond__video.prete {
+    opacity: 1;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .fond__video {
+      display: none;
+    }
+  }
+</style>

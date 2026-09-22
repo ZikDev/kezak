@@ -1,0 +1,90 @@
+---
+import Admin from '../../layouts/Admin.astro';
+import { tousReglages } from '../../lib/db';
+
+const csrf = Astro.locals.csrf;
+const retour = '/admin/general';
+const r = tousReglages();
+---
+
+<Admin titre="Général" sousTitre="Ce qui apparaît sur toutes les pages : la marque, le pied de page, le référencement du site.">
+  <form method="post" action="/admin/api/enregistrer">
+    <input type="hidden" name="csrf" value={csrf} />
+    <input type="hidden" name="retour" value={retour} />
+
+    <section class="adm__section">
+      <header><h2 class="adm__num">La marque</h2></header>
+      <div class="adm__duo">
+        <p class="adm__champ">
+          <label for="site_nom">Nom du site</label>
+          <input type="text" id="site_nom" name="r_site_nom" value={r.site_nom} />
+        </p>
+        <p class="adm__champ">
+          <label for="lieu">Lieu — pied de page de tout le site</label>
+          <input type="text" id="lieu" name="r_lieu" value={r.lieu} />
+        </p>
+      </div>
+      <p class="adm__champ">
+        <label for="pied_phrase">Phrase du pied de page</label>
+        <input type="text" id="pied_phrase" name="r_pied_phrase" value={r.pied_phrase} />
+      </p>
+    </section>
+
+    <section class="adm__section">
+      <header><h2 class="adm__num">Réseaux</h2></header>
+      <p class="adm__aide">Adresses complètes. Un champ vide retire le lien du site.</p>
+      <div class="adm__duo">
+        <p class="adm__champ">
+          <label for="reseau_instagram">Instagram</label>
+          <input type="url" id="reseau_instagram" name="r_reseau_instagram" value={r.reseau_instagram} />
+        </p>
+        <p class="adm__champ">
+          <label for="reseau_linkedin">LinkedIn</label>
+          <input type="url" id="reseau_linkedin" name="r_reseau_linkedin" value={r.reseau_linkedin} />
+        </p>
+        <p class="adm__champ">
+          <label for="reseau_behance">Behance</label>
+          <input type="url" id="reseau_behance" name="r_reseau_behance" value={r.reseau_behance} />
+        </p>
+      </div>
+    </section>
+
+    <section class="adm__section">
+      <header><h2 class="adm__num">Référencement</h2></header>
+      <p class="adm__aide">
+        Environ 155 caractères : au-delà, Google coupe. Elle sert aussi d'aperçu quand on partage
+        le lien.
+      </p>
+      <p class="adm__champ">
+        <label for="seo_description">Description du site</label>
+        <textarea id="seo_description" name="r_seo_description" rows="3" maxlength="170" set:text={r.seo_description} />
+      </p>
+    </section>
+
+    <div class="adm__actions barre">
+      <button class="adm__bouton adm__bouton--plein" type="submit">Enregistrer</button>
+    </div>
+  </form>
+
+  <section class="adm__section">
+    <header><h2 class="adm__num">Sécurité</h2></header>
+    <p class="adm__aide">
+      Le mot de passe ne se change pas depuis cette page, et c'est volontaire : il n'existe
+      aucune procédure d'oubli exploitable depuis l'extérieur. Connectez-vous au serveur et
+      lancez <code>npm run compte</code> — toutes les sessions ouvertes seront fermées.
+    </p>
+  </section>
+</Admin>
+
+<style>
+  .barre {
+    position: sticky;
+    bottom: 0;
+    background: var(--papier);
+    padding: var(--e-3) 0;
+    border-top: 1px solid var(--filet-papier);
+  }
+  code {
+    font-family: var(--mono);
+  }
+</style>

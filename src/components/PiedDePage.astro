@@ -1,0 +1,70 @@
+---
+import { tousReglages } from '../lib/db';
+const r = tousReglages();
+const reseaux = [
+  ['LinkedIn', r.reseau_linkedin],
+  ['Instagram', r.reseau_instagram],
+  ['Behance', r.reseau_behance],
+].filter(([, url]) => url);
+const annee = new Date().getFullYear();
+---
+
+<footer class="pied">
+  <div class="contenu pied__grille">
+    <p class="mono pied__phrase">{r.pied_phrase || 'Kezak est le studio de Victor Bertschy'}</p>
+    <ul class="pied__reseaux">
+      {
+        reseaux.map(([nom, url]) => (
+          <li>
+            <a class="mono" href={url} rel="me noopener">
+              {nom}
+            </a>
+          </li>
+        ))
+      }
+    </ul>
+    <p class="mono pied__lieu">© {annee} · {r.lieu || 'Romont'}</p>
+  </div>
+</footer>
+
+<style>
+  .pied {
+    background: var(--abysse);
+    color: var(--brume);
+    padding-block: var(--e-5) var(--e-5);
+  }
+  .pied__grille {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--e-4);
+    justify-content: space-between;
+    align-items: baseline;
+    border-top: 1px solid var(--filet-nuit);
+    padding-top: var(--e-4);
+  }
+  .pied p {
+    color: var(--texte-doux);
+    font-size: var(--t-100);
+    margin: 0;
+  }
+  .pied__reseaux {
+    display: flex;
+    gap: var(--e-5);
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .pied__reseaux a {
+    color: var(--brume);
+    text-decoration: none;
+  }
+  .pied__reseaux a:hover {
+    color: var(--reactif);
+  }
+  @media (max-width: 47.99rem) {
+    .pied__grille {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+  }
+</style>

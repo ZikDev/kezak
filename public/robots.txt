@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /admin/
+Disallow: /media/
+
+Sitemap: https://kezak.ch/sitemap.xml

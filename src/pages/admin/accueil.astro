@@ -1,0 +1,216 @@
+---
+import Admin from '../../layouts/Admin.astro';
+import ChoixMedia from '../../components/admin/ChoixMedia.astro';
+import { db } from '../../lib/db';
+
+const csrf = Astro.locals.csrf;
+const retour = '/admin/accueil';
+
+const ecrans = db
+  .prepare('SELECT * FROM accueil_ecrans ORDER BY position ASC, id ASC')
+  .all() as any[];
+const projets = db
+  .prepare('SELECT id, titre, statut FROM projets ORDER BY position ASC, id ASC')
+  .all() as any[];
+const medias = db
+  .prepare('SELECT id, type, alt, fichier, variantes FROM medias ORDER BY id DESC')
+  .all() as any[];
+
+const GENRES: Record<string, string> = {
+  immersion: "Immersion — le nom seul sur le dégradé",
+  phrase: 'La phrase — ce que vous faites, pour qui',
+  projet: 'Un projet en plein écran',
+  action: "L'action — les deux sorties",
+};
+const AIDES: Record<string, string> = {
+  immersion:
+    "Aucune image : le dégradé et le grain portent l'univers. Le titre est le logotype, le surtitre s'affiche en bas à gauche.",
+  phrase:
+    "Le portrait en fond, une seule phrase devant. Utilisez un retour à la ligne dans le titre pour couper la phrase en deux.",
+  projet:
+    "La boucle vidéo et l'image de fond sont reprises du projet si vous n'en mettez pas ici. Laissez le titre vide pour utiliser celui du projet.",
+  action: 'Le dernier écran. Les deux boutons sont fixes : Parlons-en et Tous les projets.',
+};
+---
+
+<Admin
+  titre="Page d'accueil"
+  sousTitre="Les écrans dans l'ordre où le visiteur les rencontre en descendant."
+  voir="/"
+>
+  {
+    ecrans.map((e, i) => (
+      <section class="adm__section">
+        <header>
+          <h2 class="adm__num">
+            {String(i).padStart(2, '0')} — {GENRES[e.genre] ?? e.genre}
+          </h2>
+          <span class="adm__outils">
+            <form method="post" action="/admin/api/ligne">
+              <input type="hidden" name="csrf" value={csrf} />
+              <input type="hidden" name="table" value="accueil_ecrans" />
+              <input type="hidden" name="id" value={e.id} />
+              <input type="hidden" name="retour" value={retour} />
+              <button
+                class="adm__bouton adm__bouton--discret"
+                name="action"
+                value="monter"
+                disabled={i === 0}
+                aria-label="Monter cet écran"
+                title="Monter"
+              >
+                ↑
+              </button>
+              <button
+                class="adm__bouton adm__bouton--discret"
+                name="action"
+                value="descendre"
+                disabled={i === ecrans.length - 1}
+                aria-label="Descendre cet écran"
+                title="Descendre"
+              >
+                ↓
+              </button>
+              <button
+                class="adm__bouton adm__bouton--danger"
+                name="action"
+                value="supprimer"
+                data-confirmer="Supprimer cet écran de l'accueil ?"
+              >
+                Supprimer
+              </button>
+            </form>
+          </span>
+        </header>
+
+        <p class="adm__aide">{AIDES[e.genre] ?? ''}</p>
+
+        <form method="post" action="/admin/api/enregistrer">
+          <input type="hidden" name="csrf" value={csrf} />
+          <input type="hidden" name="table" value="accueil_ecrans" />
+          <input type="hidden" name="id" value={e.id} />
+          <input type="hidden" name="retour" value={retour} />
+
+          <div class="adm__duo">
+            <p class="adm__champ">
+              <label for={`g${e.id}`}>Type d'écran</label>
+              <select id={`g${e.id}`} name="c_genre">
+                {Object.entries(GENRES).map(([v, l]) => (
+                  <option value={v} selected={e.genre === v}>
+                    {l}
+                  </option>
+                ))}
+              </select>
+            </p>
+            <p class="adm__champ">
+              <label for={`s${e.id}`}>Surtitre</label>
+              <input type="text" id={`s${e.id}`} name="c_surtitre" value={e.surtitre} />
+            </p>
+          </div>
+
+          <p class="adm__champ">
+            <label for={`t${e.id}`}>Titre {e.genre === 'projet' && '(vide = celui du projet)'}</label>
+            <textarea id={`t${e.id}`} name="c_titre" rows="2" set:text={e.titre} />
+          </p>
+
+          {e.genre !== 'immersion' && (
+            <p class="adm__champ">
+              <label for={`x${e.id}`}>Texte</label>
+              <textarea id={`x${e.id}`} name="c_texte" rows="4" set:text={e.texte} />
+            </p>
+          )}
+
+          <div class="adm__duo">
+            {e.genre === 'projet' && (
+              <p class="adm__champ">
+                <label for={`p${e.id}`}>Projet mis en avant</label>
+                <select id={`p${e.id}`} name="c_projet_id">
+                  <option value="">— aucun —</option>
+                  {projets.map((p) => (
+                    <option value={p.id} selected={e.projet_id === p.id}>
+                      {p.titre}
+                      {p.statut !== 'publie' ? ' (brouillon)' : ''}
+                    </option>
+                  ))}
+                </select>
+              </p>
+            )}
+            {e.genre !== 'immersion' && e.genre !== 'action' && (
+              <>
+                <ChoixMedia
+                  id={`m${e.id}`}
+                  nom="c_media_id"
+                  libelle="Image de fond"
+                  valeur={e.media_id}
+                  genre="image"
+                  medias={medias}
+                  vide="— aucune —"
+                  aide="Elle s'affiche tout de suite ; la vidéo la remplace une fois chargée."
+                />
+                <ChoixMedia
+                  id={`v${e.id}`}
+                  nom="c_video_id"
+                  libelle="Boucle vidéo"
+                  valeur={e.video_id}
+                  genre="video"
+                  medias={medias}
+                  vide="— aucune —"
+                  aide="Trois à six secondes, sans son. Ignorée si le visiteur demande moins d'animations."
+                />
+              </>
+            )}
+            {e.genre === 'projet' && (
+              <p class="adm__champ">
+                <label for={`l${e.id}`}>Libellé du bouton</label>
+                <input type="text" id={`l${e.id}`} name="c_lien_libelle" value={e.lien_libelle} />
+              </p>
+            )}
+          </div>
+
+          <label class="adm__case" for={`a${e.id}`}>
+            <input type="hidden" name="b_actif" value="1" />
+            <input type="checkbox" id={`a${e.id}`} name="c_actif" value="1" checked={!!e.actif} />
+            Écran affiché sur le site
+          </label>
+
+          <div class="adm__actions">
+            <button class="adm__bouton adm__bouton--plein" type="submit">Enregistrer</button>
+          </div>
+        </form>
+
+        {e.genre !== 'immersion' && e.genre !== 'action' && (
+          <form method="post" action="/admin/api/televerser" enctype="multipart/form-data" class="envoi">
+            <input type="hidden" name="csrf" value={csrf} />
+            <input type="hidden" name="retour" value={retour} />
+            <input type="hidden" name="ecran_id" value={e.id} />
+            <p class="adm__champ">
+              <label for={`f${e.id}`}>Envoyer une image ou une vidéo pour cet écran</label>
+              <input type="file" id={`f${e.id}`} name="fichier" accept="image/*,video/mp4,video/webm" data-limite-image-mo="15" data-limite-video-mo="60" required />
+            </p>
+            <div class="adm__actions">
+              <button class="adm__bouton" type="submit">Envoyer le fichier</button>
+            </div>
+          </form>
+        )}
+      </section>
+    ))
+  }
+
+  <form method="post" action="/admin/api/ligne">
+    <input type="hidden" name="csrf" value={csrf} />
+    <input type="hidden" name="table" value="accueil_ecrans" />
+    <input type="hidden" name="action" value="ajouter" />
+    <input type="hidden" name="retour" value={retour} />
+    <div class="adm__actions">
+      <button class="adm__bouton" type="submit">+ Ajouter un écran</button>
+    </div>
+  </form>
+</Admin>
+
+<style>
+  .envoi {
+    margin-top: var(--e-4);
+    padding-top: var(--e-4);
+    border-top: 1px solid var(--filet-papier);
+  }
+</style>

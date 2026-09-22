@@ -1,0 +1,104 @@
+/* ---------------------------------------------------------------
+   Kezak — jetons de la direction artistique
+   Palette cyanotype : cinq valeurs d'un seul bleu, plus un réactif.
+   Ne jamais introduire de couleur hors de cette liste.
+   --------------------------------------------------------------- */
+
+:root {
+  /* Couleurs */
+  --abysse: #0a1428;
+  --cuve: #16233c;
+  --ardoise: #5c6b85;
+  --brume: #aeb9d0;
+  --papier: #e9edf2;
+  --reactif: #8fe3c8;
+  --reactif-profond: #0f6b55; /* réactif lisible sur fond papier — 5.5:1 */
+
+  --filet-nuit: #1e2c45;
+  --filet-nuit-fort: #33456a;
+  --filet-papier: #c3cbd8;
+  --texte-papier-doux: #46566f; /* 6.3:1 sur papier */
+
+  /* Rôles — mode nuit (défaut) */
+  --fond: var(--abysse);
+  --surface: var(--cuve);
+  --texte: var(--papier);
+  --texte-doux: var(--brume);
+  --texte-faible: var(--ardoise); /* ≥ 24 px uniquement : 3.4:1 */
+  --filet: var(--filet-nuit);
+  --filet-fort: var(--filet-nuit-fort);
+  /* Bordure d'un champ de saisie. Elle est distincte de « --filet » parce
+     qu'elle n'est pas décorative : c'est la seule chose qui dit qu'il y a
+     un champ à cet endroit. À ce titre elle doit tenir 3:1, ce que les
+     filets de séparation n'ont pas à faire (1,3:1 pour --filet-papier).
+     Ardoise sur Abysse : 3,4:1. */
+  --filet-champ: var(--ardoise);
+  --accent: var(--reactif);
+  --accent-contraste: var(--abysse);
+
+  /* Typographie */
+  --display: 'Lineal', 'Jost', ui-sans-serif, system-ui, sans-serif;
+  --texte-famille: 'Spectral', Georgia, 'Times New Roman', serif;
+  --mono: 'Cutive Mono', ui-monospace, 'Courier New', monospace;
+
+  /* Échelle de rapport 1.25, fluide entre 480 px et 1440 px */
+  --t-100: clamp(0.78rem, 0.76rem + 0.1vw, 0.82rem);
+  --t-200: clamp(0.94rem, 0.9rem + 0.2vw, 1rem);
+  --t-300: clamp(1.06rem, 1rem + 0.3vw, 1.19rem);
+  --t-400: clamp(1.2rem, 1.1rem + 0.5vw, 1.5rem);
+  --t-500: clamp(1.4rem, 1.2rem + 1vw, 1.95rem);
+  --t-600: clamp(1.7rem, 1.35rem + 1.75vw, 2.45rem);
+  --t-700: clamp(2.1rem, 1.5rem + 3vw, 3.4rem);
+  --t-800: clamp(2.6rem, 1.6rem + 5vw, 4.75rem);
+  --t-900: clamp(3.2rem, 1.6rem + 8vw, 7rem);
+
+  --interligne-texte: 1.7;
+  --interligne-titre: 1.12;
+  --mesure: 42rem; /* environ 70 caractères en Spectral */
+
+  /* Interlettrage — c'est lui qui produit le « fine line » */
+  --ls-logo: 0.26em;
+  --ls-logo-petit: 0.18em;
+  --ls-titre: 0.03em;
+  --ls-etiquette: 0.18em;
+
+  /* Espacement, fluide */
+  --e-1: clamp(0.25rem, 0.2rem + 0.2vw, 0.4rem);
+  --e-2: clamp(0.5rem, 0.4rem + 0.3vw, 0.75rem);
+  --e-3: clamp(0.75rem, 0.6rem + 0.5vw, 1.15rem);
+  --e-4: clamp(1rem, 0.8rem + 0.9vw, 1.75rem);
+  --e-5: clamp(1.5rem, 1.1rem + 1.6vw, 2.75rem);
+  --e-6: clamp(2.25rem, 1.5rem + 3vw, 4.5rem);
+  --e-7: clamp(3.5rem, 2rem + 5vw, 7rem);
+
+  /* --- Grille ------------------------------------------------------
+     Le site est calé sur les bords de l'écran, pas sur une largeur fixe
+     centrée : la gouttière est la seule marge, et c'est elle qui place
+     les informations dans les coins, quelle que soit la diagonale.
+     Seuls les blocs de lecture sont bornés, par « --mesure ». */
+  --gouttiere: clamp(1.25rem, 0.5rem + 3.4vw, 5rem);
+  /* Borne de repli pour les rares blocs qui doivent rester centrés. */
+  --largeur-lecture: 82rem;
+  --largeur-max: 90rem; /* conservé pour compatibilité */
+  --hauteur-bandeau: 3.875rem;
+
+  /* Mouvement */
+  --duree: 400ms;
+  --duree-lente: 800ms;
+  --duree-page: 420ms;
+  --courbe: cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+/* Mode planche : la lecture. Appliqué par [data-mode="planche"]. */
+[data-mode='planche'] {
+  --fond: var(--papier);
+  --surface: var(--papier);
+  --texte: var(--abysse);
+  --texte-doux: var(--texte-papier-doux);
+  --texte-faible: var(--texte-papier-doux);
+  --filet: var(--filet-papier);
+  --filet-fort: var(--filet-papier);
+  --filet-champ: var(--texte-papier-doux); /* 6,3:1 sur papier */
+  --accent: var(--reactif-profond);
+  --accent-contraste: var(--papier);
+}

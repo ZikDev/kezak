@@ -1,0 +1,95 @@
+---
+import Media from './Media.astro';
+
+/**
+ * Façade YouTube : rien de tiers n'est chargé tant que l'internaute n'a pas
+ * cliqué. Pas de script externe, pas de cookie, pas de bannière à afficher.
+ * L'iframe youtube-nocookie n'est injectée qu'au clic.
+ */
+interface Props {
+  youtube: string;
+  titre: string;
+  poster?: Record<string, any> | null;
+}
+const { youtube, titre, poster = null } = Astro.props;
+const id = youtube.trim();
+const valide = /^[A-Za-z0-9_-]{6,20}$/.test(id);
+---
+
+{
+  valide && (
+    <div class="yt" data-youtube={id} data-titre={titre}>
+      <button class="yt__bouton" type="button">
+        <span class="visuellement-cache">Lire la vidéo : {titre}</span>
+        <span class="yt__fond" aria-hidden="true">
+          {poster ? (
+            <Media media={poster} ratio="16 / 9" tailles="(max-width: 48rem) 100vw, 60rem" />
+          ) : (
+            <img
+              src={`https://i.ytimg.com/vi/${id}/hqdefault.jpg`}
+              alt=""
+              width="480"
+              height="360"
+              loading="lazy"
+            />
+          )}
+        </span>
+        <span class="yt__lecture" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="1">
+            <path d="M8 5.5v13l11-6.5z" />
+          </svg>
+          <span class="mono">Lire</span>
+        </span>
+      </button>
+    </div>
+  )
+}
+
+<style>
+  .yt {
+    position: relative;
+    border: 1px solid var(--filet-fort);
+    background: var(--abysse);
+  }
+  .yt__bouton {
+    display: block;
+    width: 100%;
+    padding: 0;
+    border: 0;
+    background: none;
+    cursor: pointer;
+    position: relative;
+  }
+  .yt__fond img {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+  }
+  .yt__lecture {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--e-2);
+    color: var(--reactif);
+    background: rgba(10, 20, 40, 0.45); /* repli sans color-mix */
+    background: color-mix(in srgb, var(--abysse) 45%, transparent);
+    transition: background-color var(--duree) var(--courbe);
+  }
+  .yt__lecture .mono {
+    color: var(--reactif);
+  }
+  .yt__bouton:hover .yt__lecture,
+  .yt__bouton:focus-visible .yt__lecture {
+    background: rgba(10, 20, 40, 0.2);
+    background: color-mix(in srgb, var(--abysse) 20%, transparent);
+  }
+  .yt :global(iframe) {
+    display: block;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    border: 0;
+  }
+</style>

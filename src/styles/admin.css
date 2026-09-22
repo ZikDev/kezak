@@ -1,0 +1,939 @@
+/* ===================================================================
+   Kezak — l'administration.
+
+   Même direction artistique que le site, en mode planche. Mais ici on ne
+   contemple pas : on travaille. Trois règles ont guidé la mise en forme.
+
+   1. On doit savoir en une seconde où l'on est, ce qu'on modifie, et ce
+      que ça change sur le site. D'où les numéros de section repris de la
+      page publique, le sommaire en haut, et le lien « Voir la page ».
+   2. Rien ne doit se perdre. Un formulaire modifié se signale, son bouton
+      d'enregistrement se colle en bas de l'écran tant qu'on n'a pas
+      cliqué, et on est ramené à l'endroit exact d'où l'on venait.
+   3. Un champ qui parle d'une image montre l'image. Un champ limité
+      affiche ce qu'il reste. Ce qui se voit n'a pas besoin d'être appris.
+   =================================================================== */
+
+.adm {
+  --fond: var(--papier);
+  --texte: var(--abysse);
+  --texte-doux: var(--texte-papier-doux);
+  --filet: var(--filet-papier);
+  --filet-champ: var(--texte-papier-doux);
+  --accent: var(--reactif-profond);
+  /* Sans cette ligne, « --accent-contraste » gardait la valeur de la
+     racine — Abysse sur Réactif profond, soit 2,9:1 — et le lien
+     d'évitement de l'admin devenait illisible. */
+  --accent-contraste: var(--papier);
+  background: var(--papier);
+  color: var(--abysse);
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: grid;
+  grid-template-columns: 17.5rem minmax(0, 1fr);
+  font-size: 1rem;
+}
+
+/* ===================================================================
+   Colonne de navigation
+   =================================================================== */
+
+.adm__cote {
+  border-right: 1px solid var(--filet-papier);
+  background: var(--papier);
+  padding: var(--e-5) var(--e-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-5);
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  height: 100dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.adm__marque {
+  display: flex;
+  align-items: center;
+  gap: var(--e-3);
+  text-decoration: none;
+  color: var(--abysse);
+}
+.adm__marque--large {
+  flex-wrap: wrap;
+}
+.adm__mono {
+  width: 1.5rem;
+  height: 1.5rem;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--reactif-profond);
+  color: var(--reactif-profond);
+  font-family: var(--display);
+  font-size: 0.85rem;
+  line-height: 1;
+  flex: none;
+}
+.adm__nom {
+  font-family: var(--display);
+  font-weight: 300;
+  letter-spacing: var(--ls-logo-petit);
+  text-transform: uppercase;
+}
+.adm__role {
+  width: 100%;
+  font-family: var(--mono);
+  font-size: 0.64rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--texte-papier-doux);
+  padding-left: calc(1.5rem + var(--e-3));
+  margin-top: -0.35rem;
+}
+
+.adm__groupe {
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--texte-papier-doux);
+  margin: 0 0 var(--e-2);
+}
+.adm__bloc-nav + .adm__bloc-nav {
+  margin-top: var(--e-4);
+}
+.adm__nav ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.adm__nav a {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.62rem 0.6rem;
+  color: var(--abysse);
+  text-decoration: none;
+  font-size: 0.97rem;
+  border-left: 2px solid transparent;
+}
+.adm__nav a:hover {
+  background: #fff;
+}
+/* La page en cours : un aplat et un repère à gauche, plutôt qu'un simple
+   changement de couleur — on la repère du coin de l'œil. */
+.adm__nav a[aria-current='page'] {
+  background: #fff;
+  border-left-color: var(--reactif-profond);
+  color: var(--reactif-profond);
+}
+.adm__puce {
+  width: 4px;
+  height: 4px;
+  flex: none;
+  background: var(--filet-papier);
+}
+.adm__nav a[aria-current='page'] .adm__puce {
+  background: var(--reactif-profond);
+}
+
+.adm__pied {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-3);
+  padding-top: var(--e-4);
+  border-top: 1px solid var(--filet-papier);
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  color: var(--texte-papier-doux);
+}
+.adm__qui {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.adm__lien-site {
+  color: var(--reactif-profond);
+  text-decoration: none;
+}
+.adm__lien-site:hover {
+  text-decoration: underline;
+}
+
+/* --- Barre et tiroir sur petit écran ------------------------------- */
+
+.adm__barre {
+  display: none;
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--e-3);
+  padding: var(--e-3) var(--e-4);
+  background: var(--papier);
+  border-bottom: 1px solid var(--filet-papier);
+}
+.adm__menu {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-height: 44px;
+  padding: 0 0.9rem;
+  background: none;
+  border: 1px solid var(--filet-papier);
+  color: var(--abysse);
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.adm__menu__traits {
+  display: grid;
+  gap: 4px;
+  width: 16px;
+}
+.adm__menu__traits i {
+  display: block;
+  height: 1px;
+  background: var(--abysse);
+}
+.adm__rideau {
+  display: none;
+}
+
+/* ===================================================================
+   Colonne principale
+   =================================================================== */
+
+.adm__corps {
+  padding: var(--e-5) var(--e-6) var(--e-7);
+  /* Une colonne de travail bornée : au-delà, un champ de 2000 px de large
+     n'aide personne à écrire une phrase de dix mots. */
+  max-width: 74rem;
+}
+
+.adm__tete {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: var(--e-4);
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--filet-papier);
+  padding-bottom: var(--e-4);
+  margin-bottom: var(--e-4);
+}
+.adm__tete__texte {
+  min-width: 0;
+}
+.adm__fil {
+  margin: 0 0 0.3rem;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--texte-papier-doux);
+}
+.adm__fil a {
+  color: var(--texte-papier-doux);
+}
+.adm__titre {
+  font-family: var(--display);
+  font-weight: 200;
+  font-size: clamp(1.8rem, 1.2rem + 2vw, 2.8rem);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+/* La pastille ne grossit pas avec le titre. */
+.adm__titre .adm__pastille {
+  font-size: 0.72rem;
+}
+.adm__sous {
+  color: var(--texte-papier-doux);
+  margin-top: 0.45rem;
+  max-width: 52rem;
+}
+
+/* --- Sommaire de la page ------------------------------------------- */
+
+.adm__sommaire {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: var(--e-4);
+}
+.adm__sommaire a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 0.7rem;
+  border: 1px solid var(--filet-papier);
+  background: #fff;
+  color: var(--texte-papier-doux);
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  text-decoration: none;
+}
+.adm__sommaire a:hover,
+.adm__sommaire a:focus-visible {
+  border-color: var(--reactif-profond);
+  color: var(--reactif-profond);
+}
+
+/* --- Messages ------------------------------------------------------ */
+
+/* Collé en haut du cadre : après un enregistrement, la page se rouvre à
+   la hauteur de la section concernée, et le message restait au-dessus de
+   la ligne de flottaison — il s'effaçait au bout de six secondes sans
+   que personne ne l'ait vu. */
+.adm__annonces {
+  position: sticky;
+  top: 0;
+  z-index: 15;
+}
+.adm__annonces:empty {
+  display: none;
+}
+.adm__message {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  background: #fff;
+  box-shadow: 0 6px 18px -12px rgba(10, 20, 40, 0.5);
+  border: 1px solid var(--reactif-profond);
+  border-left-width: 3px;
+  padding: 0.75rem 1rem;
+  margin-bottom: var(--e-4);
+  color: var(--abysse);
+}
+.adm__message span[aria-hidden] {
+  color: var(--reactif-profond);
+}
+.adm__message--erreur {
+  border-color: #8c1d18;
+  color: #8c1d18;
+}
+.adm__message--erreur span[aria-hidden] {
+  color: #8c1d18;
+}
+
+/* ===================================================================
+   Sections — une par bloc de la page publique, dans le même ordre
+   =================================================================== */
+
+.adm__section {
+  background: #fff;
+  border: 1px solid var(--filet-papier);
+  padding: var(--e-5);
+  margin-bottom: var(--e-4);
+  scroll-margin-top: var(--e-4);
+}
+.adm__section > header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--e-4);
+  margin-bottom: var(--e-4);
+  padding-bottom: var(--e-3);
+  border-bottom: 1px solid var(--filet-papier);
+}
+/* C'est un vrai titre de niveau 2 : un lecteur d'écran peut sauter de
+   section en section, comme l'œil saute de numéro en numéro. */
+.adm__num {
+  font-family: var(--mono);
+  font-weight: 400;
+  font-size: 0.74rem;
+  line-height: 1.5;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--reactif-profond);
+  margin: 0;
+}
+.adm__aide {
+  color: var(--texte-papier-doux);
+  font-size: 0.93rem;
+  line-height: 1.6;
+  margin: 0 0 var(--e-4);
+  max-width: 48rem;
+}
+
+/* Une section dont un formulaire a été touché se signale sur son bord. */
+.adm__section:has(form.modifie) {
+  border-left: 3px solid var(--reactif-profond);
+}
+
+/* ===================================================================
+   Formulaires
+   =================================================================== */
+
+.adm form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--e-4);
+}
+.adm__duo {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+  gap: var(--e-4);
+}
+.adm__champ {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin: 0;
+  min-width: 0;
+}
+.adm label,
+.adm legend {
+  font-family: var(--mono);
+  /* 0,78 rem plutôt que 0,7 : en capitales monospacées espacées de
+     0,16 em, 11 px se lisent mal — et c'est l'étiquette de chaque champ
+     d'un outil de travail, pas une mention de bas de page. */
+  font-size: 0.78rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--texte-papier-doux);
+}
+.adm input[type='text'],
+.adm input[type='email'],
+.adm input[type='password'],
+.adm input[type='url'],
+.adm select,
+.adm textarea {
+  font-family: var(--texte-famille);
+  font-weight: 300;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: var(--abysse);
+  background: #fff;
+  /* Jeton dédié : à 1,6:1, la bordure ne disait pas assez qu'il y avait
+     un champ — et il n'y a aucun autre indice, le champ et la section
+     étant blancs tous les deux. Il faut 3:1 pour la limite d'un
+     composant quand c'est elle qui l'identifie. */
+  border: 1px solid var(--filet-champ);
+  border-radius: 0;
+  padding: 0.65rem 0.75rem;
+  width: 100%;
+  min-height: 46px;
+}
+.adm input:hover,
+.adm select:hover,
+.adm textarea:hover {
+  border-color: var(--ardoise);
+}
+.adm textarea {
+  resize: vertical;
+  line-height: 1.6;
+}
+.adm input:focus-visible,
+.adm select:focus-visible,
+.adm textarea:focus-visible {
+  outline: 2px solid var(--reactif-profond);
+  outline-offset: 1px;
+  border-color: var(--reactif-profond);
+}
+.adm input[type='file'] {
+  font-family: var(--mono);
+  font-size: 0.8rem;
+  padding: 0.6rem;
+  border: 1px dashed var(--filet-champ);
+  background: var(--papier);
+  width: 100%;
+  min-height: 46px;
+}
+
+/* Le « × » d'un message d'erreur, posé par le script. */
+.adm__fermer {
+  margin-left: auto;
+  min-width: 32px;
+  min-height: 32px;
+  background: none;
+  border: 1px solid transparent;
+  color: var(--texte-papier-doux);
+  font-size: 1.2rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.adm__fermer:hover,
+.adm__fermer:focus-visible {
+  border-color: var(--filet-champ);
+  color: var(--abysse);
+}
+
+/* Où un média est utilisé — sous sa vignette, dans la médiathèque. */
+.adm__emplois {
+  color: var(--reactif-profond);
+}
+.adm__emplois--libre {
+  color: var(--texte-papier-doux);
+}
+
+/* « obligatoire », à côté de l'étiquette. Un astérisque n'est expliqué
+   nulle part et n'est pas annoncé — autant écrire le mot. */
+.adm__requis {
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #8a5a10;
+  margin-left: 0.4rem;
+}
+
+/* Note sous un champ : la phrase qu'on aurait dit à voix haute. */
+.adm__note {
+  font-family: var(--texte-famille);
+  font-size: 0.85rem;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--texte-papier-doux);
+  margin: 0;
+}
+/* Compteur de caractères, posé par le script sur les champs bornés. */
+.adm__compteur {
+  align-self: flex-end;
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.1em;
+  color: var(--texte-papier-doux);
+  margin: -0.15rem 0 0;
+}
+.adm__compteur--limite {
+  color: #8c1d18;
+  font-weight: 700;
+}
+
+.adm__case {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  font-family: var(--texte-famille);
+  font-size: 1rem;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--abysse);
+  cursor: pointer;
+  min-height: 44px;
+}
+.adm__case input {
+  width: 17px;
+  height: 17px;
+  flex: none;
+  accent-color: var(--reactif-profond);
+}
+
+/* --- Aperçu d'un média choisi -------------------------------------- */
+
+.adm__media {
+  display: grid;
+  grid-template-columns: 5.5rem minmax(0, 1fr);
+  gap: var(--e-3);
+  align-items: start;
+}
+/* « display: grid » l'emportait sur la règle « [hidden] { display: none } »
+   du navigateur, quelle que soit la spécificité : un cadre d'aperçu vide
+   restait affiché en permanence sous chaque champ de fichier, et se
+   lisait comme une image manquante. */
+.adm__apercu[hidden] {
+  display: none;
+}
+.adm__apercu {
+  margin: 0;
+  border: 1px solid var(--filet-papier);
+  background: var(--papier);
+  aspect-ratio: 4 / 3;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+.adm__apercu img,
+.adm__apercu video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.adm__apercu--vide::after {
+  content: '—';
+  font-family: var(--mono);
+  color: var(--texte-papier-doux);
+}
+
+/* ===================================================================
+   Boutons
+   =================================================================== */
+
+.adm__bouton,
+.adm .bouton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-height: 44px;
+  padding: 0.65rem 1.3rem;
+  border: 1px solid var(--reactif-profond);
+  background: transparent;
+  color: var(--reactif-profond);
+  font-family: var(--mono);
+  font-size: 0.74rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background-color var(--duree) var(--courbe),
+    color var(--duree) var(--courbe),
+    border-color var(--duree) var(--courbe);
+}
+.adm__bouton:hover:not(:disabled),
+.adm__bouton:focus-visible {
+  background: var(--reactif-profond);
+  color: var(--papier);
+}
+.adm__bouton--plein {
+  background: var(--reactif-profond);
+  color: var(--papier);
+}
+.adm__bouton--plein:hover:not(:disabled),
+.adm__bouton--plein:focus-visible {
+  background: transparent;
+  color: var(--reactif-profond);
+}
+.adm__bouton--danger {
+  border-color: #8c1d18;
+  color: #8c1d18;
+}
+.adm__bouton--danger:hover:not(:disabled),
+.adm__bouton--danger:focus-visible {
+  background: #8c1d18;
+  color: var(--papier);
+}
+.adm__bouton--discret {
+  border-color: var(--filet-champ);
+  color: var(--texte-papier-doux);
+}
+.adm__bouton--discret:hover:not(:disabled),
+.adm__bouton--discret:focus-visible {
+  background: var(--abysse);
+  border-color: var(--abysse);
+  color: var(--papier);
+}
+.adm__bouton:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.adm__bouton--petit {
+  min-height: 40px;
+  padding: 0.25rem 0.8rem;
+  font-size: 0.7rem;
+}
+
+/* --- La barre d'enregistrement -------------------------------------
+   Tant que rien n'a bougé, c'est une ligne de boutons ordinaire. Dès
+   qu'un champ change, elle se colle au bas de l'écran et annonce ce qui
+   est en attente : on ne peut plus quitter une fiche sans l'avoir vue. */
+.adm__actions {
+  display: flex;
+  gap: var(--e-3);
+  align-items: center;
+  flex-wrap: wrap;
+}
+form.modifie .adm__actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+  background: #fff;
+  border-top: 1px solid var(--reactif-profond);
+  padding: 0.7rem 0;
+  margin-bottom: -0.2rem;
+}
+.adm__etat {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--reactif-profond);
+}
+.adm__etat[hidden] {
+  display: none;
+}
+
+/* Pendant un envoi. « aria-busy » était posé par le script et aucune
+   règle ne le regardait : l'envoi d'une vidéo de 55 Mo laissait la page
+   parfaitement immobile pendant une minute. */
+.adm form[aria-busy='true'] {
+  opacity: 0.75;
+}
+.adm form[aria-busy='true'] .adm__etat {
+  color: var(--texte-papier-doux);
+}
+.adm form[aria-busy='true'] input,
+.adm form[aria-busy='true'] select,
+.adm form[aria-busy='true'] textarea {
+  background: var(--papier);
+}
+
+/* ===================================================================
+   Lignes réordonnables
+   =================================================================== */
+
+.adm__ligne {
+  border: 1px solid var(--filet-papier);
+  padding: var(--e-4);
+  margin-bottom: var(--e-3);
+  background: #fff;
+}
+/* Seul en-tête de l'admin à n'avoir pas de retour à la ligne : sur un
+   téléphone, « Image 01 — média #12 » plus trois boutons ne tiennent pas
+   dans 294 px, et le mot « Supprimer » se cassait dans son bouton. */
+.adm__ligne > header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--e-3);
+  margin-bottom: var(--e-3);
+  padding-bottom: var(--e-2);
+  border-bottom: 1px solid var(--filet-papier);
+}
+.adm__poignee {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--texte-papier-doux);
+}
+/* Les commandes d'une ligne restent en ligne, quoi qu'en dise « .adm form ». */
+.adm__outils {
+  display: flex;
+  gap: 0.35rem;
+  align-items: center;
+}
+.adm__outils form {
+  flex-direction: row;
+  gap: 0.35rem;
+  align-items: center;
+}
+/* 44 px : ce sont les commandes qu'on manipule le plus au doigt. */
+.adm__outils .adm__bouton {
+  min-height: 44px;
+  padding: 0.25rem 0.8rem;
+  font-size: 0.7rem;
+}
+
+/* ===================================================================
+   Tableaux
+   =================================================================== */
+
+/* Sur un téléphone, un tableau à sept colonnes déborde de l'écran et
+   pousse toute la page vers la droite. Il défile dans son cadre, et une
+   ombre sur le bord droit dit qu'il reste quelque chose à voir. */
+.adm__tableau {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  background:
+    linear-gradient(to right, #fff 30%, rgba(255, 255, 255, 0)) left center / 2.5rem 100% no-repeat,
+    linear-gradient(to left, #fff 30%, rgba(255, 255, 255, 0)) right center / 2.5rem 100% no-repeat,
+    radial-gradient(farthest-side at 0 50%, rgba(10, 20, 40, 0.14), rgba(10, 20, 40, 0)) left center /
+      0.7rem 100% no-repeat,
+    radial-gradient(farthest-side at 100% 50%, rgba(10, 20, 40, 0.14), rgba(10, 20, 40, 0)) right
+      center / 0.7rem 100% no-repeat;
+  background-attachment: local, local, scroll, scroll;
+}
+.adm__tableau table {
+  min-width: 38rem;
+}
+.adm table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+  background: #fff;
+}
+.adm th,
+.adm td {
+  text-align: left;
+  padding: 0.75rem 0.6rem;
+  border-bottom: 1px solid var(--filet-papier);
+  vertical-align: middle;
+}
+.adm th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #fff;
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--texte-papier-doux);
+  font-weight: 400;
+  border-bottom-color: var(--ardoise);
+}
+.adm tbody tr:hover {
+  background: var(--papier);
+}
+.adm td a {
+  color: var(--abysse);
+}
+.adm td form {
+  flex-direction: row;
+  gap: 0.3rem;
+}
+
+.adm__pastille {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 0.22rem 0.5rem;
+  border: 1px solid currentColor;
+  white-space: nowrap;
+}
+.adm__pastille--publie {
+  color: var(--reactif-profond);
+}
+.adm__pastille--brouillon {
+  color: #8a5a10;
+}
+
+/* ===================================================================
+   Vignettes de la médiathèque
+   =================================================================== */
+
+.adm__vignettes {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 12rem), 1fr));
+  gap: var(--e-4);
+}
+.adm__vignette {
+  border: 1px solid var(--filet-papier);
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+}
+.adm__vignette img,
+.adm__vignette video {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  background: var(--abysse);
+}
+.adm__vignette form,
+.adm__vignette .adm__infos {
+  padding: 0.7rem;
+  gap: 0.5rem;
+}
+.adm__vignette form:last-of-type {
+  padding-top: 0;
+}
+.adm__infos {
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.06em;
+  line-height: 1.6;
+  color: var(--texte-papier-doux);
+  margin: 0;
+}
+
+/* ===================================================================
+   État vide — une page sans contenu doit dire quoi faire
+   =================================================================== */
+
+.adm__vide {
+  border: 1px dashed var(--filet-papier);
+  background: var(--papier);
+  padding: var(--e-5);
+  text-align: center;
+  color: var(--texte-papier-doux);
+}
+.adm__vide p {
+  margin: 0 auto var(--e-4);
+  max-width: 32rem;
+}
+
+/* ===================================================================
+   Écrans étroits
+   =================================================================== */
+
+@media (max-width: 63.99rem) {
+  .adm {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .adm__barre {
+    display: flex;
+  }
+  /* La barre est elle aussi collée en haut, et elle passe devant :
+     l'encart de confirmation se glisse dessous au lieu de disparaître
+     derrière. */
+  .adm__annonces {
+    top: 4.2rem;
+  }
+
+  /* La colonne devient un tiroir : elle ne repousse plus le contenu de
+     deux écrans vers le bas, et elle se referme au choix d'une page. */
+  .adm__cote {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 60;
+    width: min(20rem, 86vw);
+    border-right: 1px solid var(--filet-papier);
+    transform: translateX(-100%);
+    visibility: hidden;
+    /* La visibilité ne bascule qu'une fois le tiroir sorti de l'écran :
+       le clavier ne peut pas se perdre dans un panneau invisible. */
+    transition:
+      transform var(--duree) var(--courbe),
+      visibility 0s linear var(--duree);
+  }
+  .adm__cote.ouvert {
+    transform: none;
+    visibility: visible;
+    transition:
+      transform var(--duree) var(--courbe),
+      visibility 0s;
+  }
+  .adm__rideau {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    background: rgba(10, 20, 40, 0.45);
+  }
+  .adm__rideau[hidden] {
+    display: none;
+  }
+
+  .adm__corps {
+    padding: var(--e-4) var(--e-4) var(--e-7);
+  }
+  .adm__section {
+    padding: var(--e-4);
+  }
+  .adm__section > header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .adm__media {
+    grid-template-columns: 4.5rem minmax(0, 1fr);
+  }
+  /* La barre du haut est collante : une ancre ne doit pas atterrir
+     dessous. */
+  .adm__section {
+    scroll-margin-top: 5rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .adm__cote {
+    transition: none;
+  }
+}

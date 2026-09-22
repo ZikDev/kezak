@@ -1,0 +1,194 @@
+---
+import Admin from '../../layouts/Admin.astro';
+import { db } from '../../lib/db';
+
+const compte = (sql: string, ...p: any[]) => (db.prepare(sql).get(...p) as any).n as number;
+
+const projetsPublies = compte("SELECT COUNT(*) AS n FROM projets WHERE statut = 'publie'");
+const brouillons = compte("SELECT COUNT(*) AS n FROM projets WHERE statut = 'brouillon'");
+const enAvant = compte("SELECT COUNT(*) AS n FROM projets WHERE en_avant = 1 AND statut = 'publie'");
+const nonLus = compte('SELECT COUNT(*) AS n FROM messages WHERE lu = 0');
+const medias = compte('SELECT COUNT(*) AS n FROM medias');
+
+const derniers = db
+  .prepare('SELECT id, nom, orga, cree_le, lu FROM messages ORDER BY id DESC LIMIT 5')
+  .all() as any[];
+
+const recents = db
+  .prepare('SELECT id, titre, statut, modifie_le FROM projets ORDER BY modifie_le DESC LIMIT 5')
+  .all() as any[];
+
+// Les trous à combler : les crochets laissés par le jeu de données initial.
+const aCombler = db
+  .prepare(
+    `SELECT 'Projet : ' || titre AS ou, id FROM projets
+     WHERE resume LIKE '%[%]%' OR chapeau LIKE '%[%]%' OR note LIKE '%[%]%' OR citation LIKE '%[%]%'
+     UNION ALL
+     SELECT 'Section de ' || p.titre, p.id FROM projet_sections s
+     JOIN projets p ON p.id = s.projet_id WHERE s.corps LIKE '%[%]%'
+     UNION ALL
+     SELECT 'Générique de ' || p.titre, p.id FROM projet_credits c
+     JOIN projets p ON p.id = c.projet_id WHERE c.noms LIKE '%[%]%'`
+  )
+  .all() as any[];
+
+const uniques = [...new Map(aCombler.map((l) => [l.ou, l])).values()];
+const dateFr = (s: string) => (s ? s.slice(8, 10) + '.' + s.slice(5, 7) + '.' + s.slice(0, 4) : '');
+---
+
+<Admin titre="Tableau de bord" sousTitre="L'état du site en un coup d'œil." voir="/">
+  <div class="chiffres">
+    <a class="chiffre" href="/admin/projets">
+      <strong>{projetsPublies}</strong><span>projets publiés</span>
+    </a>
+    <a class="chiffre" href="/admin/projets">
+      <strong>{brouillons}</strong><span>brouillons</span>
+    </a>
+    <a class="chiffre" href="/admin/accueil">
+      <strong>{enAvant}</strong><span>en avant sur l'accueil</span>
+    </a>
+    <a class="chiffre" href="/admin/messages">
+      <strong>{nonLus}</strong><span>messages non lus</span>
+    </a>
+    <a class="chiffre" href="/admin/medias">
+      <strong>{medias}</strong><span>médias</span>
+    </a>
+  </div>
+
+  {
+    uniques.length > 0 && (
+      <section class="adm__section">
+        <header>
+          <h2 class="adm__num">À compléter</h2>
+        </header>
+        <p class="adm__aide">
+          Les textes entre crochets viennent du contenu de départ. Tant qu'ils sont là, ils
+          s'affichent tels quels sur le site.
+        </p>
+        <ul class="trous">
+          {uniques.map((t) => (
+            <li>
+              <a href={`/admin/projets/${t.id}`}>{t.ou}</a>
+            </li>
+          ))}
+        </ul>
+      </section>
+    )
+  }
+
+  <section class="adm__section">
+    <header>
+      <h2 class="adm__num">Derniers messages</h2>
+      <a class="adm__bouton adm__bouton--discret" href="/admin/messages">Tout voir</a>
+    </header>
+    {
+      derniers.length === 0 ? (
+        <div class="adm__vide">
+          <p>Aucun message pour l'instant.</p>
+        </div>
+      ) : (
+        <div class="adm__tableau">
+          <table>
+          <thead>
+            <tr>
+              <th>Qui</th>
+              <th>Reçu le</th>
+              <th />
+            </tr>
+          </thead>
+          <tbody>
+            {derniers.map((m) => (
+              <tr>
+                <td>
+                  <a href={`/admin/messages#m${m.id}`}>
+                    {m.nom}
+                    {m.orga ? ` — ${m.orga}` : ''}
+                  </a>
+                </td>
+                <td>{dateFr(m.cree_le)}</td>
+                <td>
+                  {!m.lu && <span class="adm__pastille adm__pastille--publie">Non lu</span>}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        </div>
+      )
+    }
+  </section>
+
+  <section class="adm__section">
+    <header>
+      <h2 class="adm__num">Modifiés récemment</h2>
+      <a class="adm__bouton adm__bouton--discret" href="/admin/projets/nouveau">+ Nouveau projet</a>
+    </header>
+    {recents.length === 0 ? (
+      <div class="adm__vide">
+        <p>Aucun projet pour l'instant.</p>
+        <a class="adm__bouton adm__bouton--plein" href="/admin/projets/nouveau">Créer le premier</a>
+      </div>
+    ) : (
+    <div class="adm__tableau">
+      <table>
+      <tbody>
+        {
+          recents.map((p) => (
+            <tr>
+              <td>
+                <a href={`/admin/projets/${p.id}`}>{p.titre}</a>
+              </td>
+              <td>
+                <span class={`adm__pastille adm__pastille--${p.statut}`}>
+                  {p.statut === 'publie' ? 'Publié' : 'Brouillon'}
+                </span>
+              </td>
+              <td>{dateFr(p.modifie_le)}</td>
+            </tr>
+          ))
+        }
+      </tbody>
+    </table>
+    </div>
+    )}
+  </section>
+</Admin>
+
+<style>
+  .chiffres {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+    gap: var(--e-3);
+    margin-bottom: var(--e-5);
+  }
+  .chiffre {
+    border: 1px solid var(--filet-papier);
+    padding: var(--e-4);
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    text-decoration: none;
+    color: var(--abysse);
+    background: #fff;
+  }
+  .chiffre strong {
+    font-family: var(--display);
+    font-weight: 200;
+    font-size: 2.4rem;
+    line-height: 1;
+  }
+  .chiffre span {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--texte-papier-doux);
+  }
+  .trous {
+    margin: 0;
+    padding-left: 1.2rem;
+  }
+  .trous li {
+    padding-block: 0.25rem;
+  }
+</style>

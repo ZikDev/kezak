@@ -1,0 +1,111 @@
+/* ---------------------------------------------------------------
+   Kezak — le passage d'une page à l'autre.
+
+   Cette feuille n'est chargée que par le gabarit du site public. Elle
+   était dans le socle, et s'appliquait donc aussi à l'administration :
+   passer du back-office clair au site sombre déclenchait une transition
+   qui n'avait rien à faire là.
+
+   Deux mécanismes, dans cet ordre :
+
+   1. La transition de document, quand le navigateur sait la faire. C'est
+      lui qui tient l'image de la page quittée à l'écran tant que la
+      suivante n'est pas prête à peindre — la transition dure donc
+      exactement le temps du chargement, et se prolonge d'elle-même si
+      la page met du temps à venir. Le « link rel=expect » du gabarit lui
+      dit ce qu'il doit attendre : l'élément #contenu.
+
+   2. Ailleurs — Firefox aujourd'hui — un repli en JavaScript : la page
+      quittée s'estompe sans jamais disparaître tout à fait, et la
+      nouvelle arrive en fondu. Là aussi l'attente s'étire sans à-coup :
+      rien ne se referme avant que la page suivante ne s'affiche.
+   --------------------------------------------------------------- */
+
+@view-transition {
+  navigation: auto;
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: var(--duree-page);
+  animation-timing-function: var(--courbe);
+}
+
+/* Le bandeau ne clignote pas : il est le même d'une page à l'autre. */
+::view-transition-group(bandeau) {
+  animation-duration: var(--duree-page);
+}
+
+/* --- Le repli, pour les navigateurs sans transition de document ----
+   Armé par le script, qui pose « html.replis » seulement là où le
+   navigateur n'a pas les transitions de document. Sans script, rien ne
+   se pose et rien ne bouge : aucune page ne peut rester estompée. */
+
+@media (prefers-reduced-motion: no-preference) {
+  /* « backwards » et non « both ». Avec « both », l'image-clé finale de
+     l'animation d'arrivée continue de s'appliquer une fois celle-ci
+     terminée — et comme une déclaration issue d'une animation passe
+     avant toute déclaration ordinaire, elle écrasait en permanence
+     l'estompage du départ, qui ne se produisait donc jamais. */
+  html.replis body {
+    animation: page-arrive var(--duree-page) var(--courbe) backwards;
+  }
+
+  /* Pendant le départ : la page s'efface partiellement, pas complètement.
+     Un écran vide donne l'impression d'une panne ; un écran retenu à 22 %
+     dit « ça vient ». Et comme rien ne referme cet état avant l'arrivée
+     de la page suivante, une destination lente prolonge simplement
+     l'attente au lieu de la couper net.
+
+     Pas de « filter » ici, même si un léger flou serait plus joli : une
+     valeur de filter autre que « none » fait de l'élément le bloc
+     conteneur de ses descendants en position fixe. Le bandeau et le fil
+     d'attente se seraient recalés sur le haut du document — donc auraient
+     disparu de l'écran sur une page défilée, au moment précis où le fil
+     est censé rassurer. */
+  html.replis.part body {
+    opacity: 0.22;
+    transition: opacity 320ms var(--courbe);
+  }
+}
+
+@keyframes page-arrive {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* --- Mouvement réduit ---------------------------------------------
+   La règle universelle du socle (« *, *::before, *::after ») ne touche
+   pas les pseudo-éléments de transition : ils n'appartiennent pas à
+   l'arbre des éléments et « * » ne les sélectionne pas. Sans ce qui
+   suit, quelqu'un ayant demandé moins d'animations voyait quand même le
+   fondu à chaque changement de page.
+
+   La règle « @view-transition { navigation: none } » ci-dessous est la
+   voie officielle ; les sélecteurs qui la suivent sont le filet, parce
+   que je n'ai pas pu vérifier en navigateur qu'un « @view-transition »
+   imbriqué dans une requête média est bien honoré partout. */
+
+@media (prefers-reduced-motion: reduce) {
+  @view-transition {
+    navigation: none;
+  }
+
+  ::view-transition-group(*),
+  ::view-transition-image-pair(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+
+  html.replis body,
+  html.replis.part body {
+    animation: none;
+    opacity: 1;
+    transition: none;
+  }
+}

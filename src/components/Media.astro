@@ -1,0 +1,70 @@
+---
+import { srcset } from '../lib/media';
+
+interface Props {
+  media?: Record<string, any> | null;
+  /** Rapport largeur/hauteur imposé, pour qu'il n'y ait aucun décalage. */
+  ratio?: string;
+  tailles?: string;
+  prioritaire?: boolean;
+  classe?: string;
+  /** Dégradé de repli quand aucun média n'est encore chargé. */
+  repli?: string;
+}
+
+const {
+  media = null,
+  ratio = '16 / 9',
+  tailles = '100vw',
+  prioritaire = false,
+  classe = '',
+  repli = 'linear-gradient(148deg, #c6dbeb 0%, #5f8fb8 26%, #1e4874 60%, #0a1428 100%)',
+} = Astro.props;
+
+let variantes: Record<string, string> = {};
+try {
+  variantes = media?.variantes ? JSON.parse(media.variantes) : {};
+} catch {
+  variantes = {};
+}
+const aDesVariantes = Object.keys(variantes).some((c) => c.startsWith('webp'));
+const src = variantes.webp1600 || variantes.webp800 || variantes.webp400;
+---
+
+{
+  media && aDesVariantes ? (
+    <picture class={classe} style={`--ratio:${ratio}`}>
+      <source type="image/avif" srcset={srcset(variantes, 'avif')} sizes={tailles} />
+      <source type="image/webp" srcset={srcset(variantes, 'webp')} sizes={tailles} />
+      <img
+        src={`/media/${src}`}
+        alt={media.alt || ''}
+        width={media.largeur || undefined}
+        height={media.hauteur || undefined}
+        loading={prioritaire ? 'eager' : 'lazy'}
+        decoding={prioritaire ? 'sync' : 'async'}
+        fetchpriority={prioritaire ? 'high' : 'auto'}
+      />
+    </picture>
+  ) : (
+    <div class={`repli ${classe}`} style={`--ratio:${ratio}; --repli:${repli}`} aria-hidden="true" />
+  )
+}
+
+<style>
+  picture {
+    display: block;
+    width: 100%;
+    aspect-ratio: var(--ratio);
+  }
+  picture img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .repli {
+    width: 100%;
+    aspect-ratio: var(--ratio);
+    background: var(--repli);
+  }
+</style>

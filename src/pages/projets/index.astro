@@ -1,0 +1,312 @@
+---
+import Base from '../../layouts/Base.astro';
+import Media from '../../components/Media.astro';
+import { projetsPublies, media, tousReglages } from '../../lib/db';
+
+const r = tousReglages();
+const projets = projetsPublies();
+const enAvant = projets.filter((p) => p.en_avant).slice(0, 3);
+const idsEnAvant = new Set(enAvant.map((p) => p.id));
+const reste = projets.filter((p) => !idsEnAvant.has(p.id));
+const moyens = reste.slice(0, 6);
+const lignes = reste.slice(6);
+
+const categories = [...new Set(projets.map((p) => p.categorie).filter(Boolean))];
+const annees = projets.map((p) => Number(p.annee)).filter((n) => !Number.isNaN(n) && n > 1990);
+const periode = annees.length ? `${Math.min(...annees)}–${Math.max(...annees)}` : '';
+---
+
+<Base
+  titre="Tous les projets"
+  description={r.annuaire_description || 'Web, vidéo, motion, 3D, photographie et son.'}
+  actif="projets"
+>
+  <div class="annuaire contenu">
+    <header class="annuaire__tete">
+      <div>
+        <p class="etiquette">
+          Annuaire · {projets.length} planche{projets.length > 1 ? 's' : ''}{periode && ` · ${periode}`}
+        </p>
+        <h1 class="annuaire__titre">Tous les projets</h1>
+      </div>
+      <p class="annuaire__intro">{r.annuaire_intro || ''}</p>
+    </header>
+
+    <hr class="filet" />
+
+    {
+      categories.length > 1 && (
+        <nav class="filtres" aria-label="Filtrer par catégorie">
+          <a class="filtre filtre--actif" href="/projets">Tout</a>
+          {categories.map((c) => (
+            <a class="filtre" href={`/projets?c=${encodeURIComponent(c)}`} data-filtre={c}>
+              {c}
+            </a>
+          ))}
+        </nav>
+      )
+    }
+
+    {
+      enAvant.length > 0 && (
+        <ul class="grille grille--grande" role="list">
+          {enAvant.map((p, i) => (
+            <li class="entree">
+              <a class="carte" href={`/projets/${p.slug}`}>
+                <span class="carte__image">
+                  <Media
+                    media={media(p.hero_id)}
+                    ratio="16 / 10"
+                    tailles="(max-width: 48rem) 100vw, (min-width: 110rem) 32vw, 30rem"
+                    prioritaire={i === 0}
+                  />
+                  <span class="carte__cote mono">Pl. {String(i + 1).padStart(2, '0')}</span>
+                </span>
+                <span class="carte__titre">{p.titre}</span>
+                <span class="mono carte__meta carte__meta--accent">
+                  {p.categorie_txt || p.categorie}{p.annee && ` — ${p.annee}`}
+                </span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      )
+    }
+
+    {enAvant.length > 0 && moyens.length > 0 && <hr class="filet" />}
+
+    {
+      moyens.length > 0 && (
+        <ul class="grille grille--moyenne differe" role="list">
+          {moyens.map((p, i) => (
+            <li class="entree">
+              <a class="carte carte--discrete" href={`/projets/${p.slug}`}>
+                <span class="carte__image">
+                  <Media media={media(p.hero_id)} ratio="16 / 9" tailles="(max-width: 48rem) 100vw, 26rem" />
+                  <span class="carte__cote mono">Pl. {String(enAvant.length + i + 1).padStart(2, '0')}</span>
+                </span>
+                <span class="carte__titre carte__titre--petit">{p.titre}</span>
+                <span class="mono carte__meta">{p.categorie_txt || p.categorie}</span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      )
+    }
+
+    {
+      lignes.length > 0 && (
+        <>
+          <hr class="filet" />
+          <ul class="lignes differe" role="list">
+            {lignes.map((p, i) => (
+              <li>
+                <a class="ligne" href={`/projets/${p.slug}`}>
+                  <span class="mono">
+                    Pl. {String(enAvant.length + moyens.length + i + 1).padStart(2, '0')} — {p.titre}
+                  </span>
+                  <span class="mono ligne__cat">{p.categorie_txt || p.categorie}</span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </>
+      )
+    }
+
+    <aside class="rattrapage differe differe--court">
+      <div>
+        <h2 class="rattrapage__titre">{r.annuaire_relance_titre || 'Vous ne trouvez pas un cas proche du vôtre ?'}</h2>
+        <p>{r.annuaire_relance_texte || 'Décrivez-le en trois lignes, je réponds sous une semaine.'}</p>
+      </div>
+      <a class="bouton bouton--plein" href="/contact">Parlons-en</a>
+    </aside>
+  </div>
+</Base>
+
+<style>
+  .annuaire {
+    padding-top: calc(var(--hauteur-bandeau) + var(--e-6));
+    padding-bottom: var(--e-7);
+    display: flex;
+    flex-direction: column;
+    gap: var(--e-5);
+  }
+  .annuaire__tete {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: var(--e-5);
+    flex-wrap: wrap;
+  }
+  .annuaire__titre {
+    font-size: var(--t-800);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-top: var(--e-3);
+  }
+  .annuaire__intro {
+    color: var(--texte-doux);
+    max-width: 30rem;
+    text-align: right;
+  }
+
+  .filtres {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--e-2);
+  }
+  .filtre {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0 var(--e-4);
+    border: 1px solid var(--filet);
+    color: var(--texte-doux);
+    font-family: var(--mono);
+    font-size: var(--t-100);
+    letter-spacing: var(--ls-etiquette);
+    text-transform: uppercase;
+    text-decoration: none;
+  }
+  .filtre--actif {
+    border-color: var(--reactif);
+    color: var(--reactif);
+  }
+
+  .grille {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: var(--e-5);
+  }
+  /* auto-fit remplit vraiment la largeur disponible : trois cartes sur un
+     portable, davantage sur un grand écran. Les bornes hautes évitent le
+     défaut inverse — une rangée de vignettes minuscules sur un 32 pouces. */
+  .grille--grande {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+  }
+  .grille--moyenne {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+  }
+  @media (min-width: 110rem) {
+    .grille--grande {
+      grid-template-columns: repeat(3, 1fr);
+    }
+    .grille--moyenne {
+      grid-template-columns: repeat(4, 1fr);
+    }
+  }
+
+  .carte {
+    display: flex;
+    flex-direction: column;
+    gap: var(--e-3);
+    text-decoration: none;
+    color: var(--texte);
+  }
+  .carte__image {
+    position: relative;
+    display: block;
+    border: 1px solid var(--filet-fort);
+    overflow: hidden;
+    overflow: clip;
+  }
+  .carte--discrete .carte__image {
+    border-color: var(--filet);
+  }
+  .carte__image :global(picture),
+  .carte__image :global(.repli) {
+    transition: transform 600ms var(--courbe);
+  }
+  .carte:hover .carte__image :global(picture),
+  .carte:focus-visible .carte__image :global(picture) {
+    transform: scale(1.02);
+  }
+  /* Bande sombre en haut de la vignette : le numéro de planche était posé
+     en blanc directement sur l'image, sans le moindre assombrissement. Sur
+     un projet dont le coin haut-gauche est clair — un ciel, un mur blanc,
+     de la neige — il devenait purement et simplement invisible. */
+  .carte__image::after {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 5.5rem;
+    background: linear-gradient(180deg, rgba(10, 20, 40, 0.72) 0%, rgba(10, 20, 40, 0) 100%);
+    pointer-events: none;
+  }
+  .carte__cote {
+    position: absolute;
+    top: var(--e-2);
+    left: var(--e-3);
+    /* Au-dessus de la bande : le pseudo-élément vient après dans l'arbre
+       et passerait sinon par-dessus le texte. */
+    z-index: 1;
+    color: var(--papier);
+  }
+  .carte__titre {
+    font-family: var(--display);
+    font-weight: 300;
+    font-size: var(--t-500);
+    line-height: 1.2;
+  }
+  .carte__titre--petit {
+    font-size: var(--t-400);
+  }
+  .carte__meta {
+    color: var(--texte-doux);
+    font-size: var(--t-100);
+  }
+  .carte__meta--accent {
+    color: var(--reactif);
+  }
+
+  .lignes {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+    gap: 0 var(--e-5);
+  }
+  .ligne {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--e-4);
+    padding-block: var(--e-4);
+    border-bottom: 1px solid var(--filet);
+    color: var(--texte-doux);
+    text-decoration: none;
+  }
+  .ligne:hover {
+    color: var(--reactif);
+  }
+  .ligne__cat {
+    color: var(--texte-doux);
+  }
+
+  .rattrapage {
+    margin-top: var(--e-5);
+    border: 1px solid var(--reactif);
+    padding: var(--e-5);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--e-5);
+    flex-wrap: wrap;
+  }
+  .rattrapage__titre {
+    font-size: var(--t-500);
+  }
+  .rattrapage p {
+    color: var(--texte-doux);
+    margin-top: var(--e-2);
+  }
+
+  @media (max-width: 47.99rem) {
+    .annuaire__intro {
+      text-align: left;
+    }
+  }
+</style>

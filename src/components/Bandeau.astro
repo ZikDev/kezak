@@ -1,0 +1,181 @@
+---
+interface Props {
+  /** Sur l'accueil, le bandeau n'apparaît qu'une fois le premier écran passé. */
+  differe?: boolean;
+  actif?: 'projets' | 'studio' | 'contact' | null;
+}
+const { differe = false, actif = null } = Astro.props;
+---
+
+<header class:list={['bandeau', differe && 'bandeau--differe']} data-differe={differe ? '1' : null}>
+  <a class="bandeau__marque" href="/" aria-label="Kezak, retour à l'accueil">
+    <span class="monogramme" aria-hidden="true">K</span>
+    <span class="bandeau__mot">Kezak</span>
+  </a>
+
+  <button class="bandeau__bascule" type="button" aria-expanded="false" aria-controls="menu">
+    <span class="visuellement-cache">Ouvrir le menu</span>
+    <span class="bandeau__traits" aria-hidden="true"><i></i><i></i></span>
+  </button>
+
+  <nav class="bandeau__nav" id="menu" aria-label="Navigation principale">
+    <a href="/projets" aria-current={actif === 'projets' ? 'page' : undefined}>Projets</a>
+    <a href="/studio" aria-current={actif === 'studio' ? 'page' : undefined}>Studio</a>
+    <a class="bouton" href="/contact" aria-current={actif === 'contact' ? 'page' : undefined}>
+      Parlons-en
+    </a>
+  </nav>
+</header>
+
+<style>
+  .bandeau {
+    position: fixed;
+    inset: 0 0 auto 0;
+    z-index: 50;
+    height: var(--hauteur-bandeau);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--e-4);
+    padding-inline: var(--gouttiere);
+    /* Les deux valeurs disaient la même chose à dix points près — le
+       repli était plus opaque que la version voulue. */
+    background: rgba(10, 20, 40, 0.82); /* repli sans color-mix */
+    background: color-mix(in srgb, var(--abysse) 82%, transparent);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--filet-nuit);
+    transition:
+      opacity var(--duree) var(--courbe),
+      transform var(--duree) var(--courbe);
+    /* Le bandeau est le même d'une page à l'autre : nommé, il traverse la
+       transition au lieu de disparaître et de réapparaître. */
+    view-transition-name: bandeau;
+  }
+
+  /* Sur l'accueil : masqué tant qu'on n'a pas quitté le premier écran.
+     L'état masqué lui-même est dans le socle (src/styles/base.css) : il
+     dépend de la présence d'un script, et une règle conditionnelle de ce
+     genre n'a pas sa place dans une feuille de composant. */
+  .bandeau--differe.visible {
+    opacity: 1;
+    transform: none;
+    pointer-events: auto;
+  }
+
+  .bandeau__marque {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--e-3);
+    text-decoration: none;
+    color: var(--papier);
+  }
+  .monogramme {
+    width: 1.4rem;
+    height: 1.4rem;
+    display: grid;
+    place-items: center;
+    border: 1px solid var(--reactif);
+    color: var(--reactif);
+    font-family: var(--display);
+    font-weight: 400;
+    font-size: 0.8rem;
+    line-height: 1;
+  }
+  .bandeau__mot {
+    font-family: var(--display);
+    font-weight: 300;
+    font-size: 1rem;
+    letter-spacing: var(--ls-logo-petit);
+    text-transform: uppercase;
+  }
+
+  .bandeau__nav {
+    display: flex;
+    align-items: center;
+    gap: clamp(1rem, 2.5vw, 2rem);
+    font-family: var(--mono);
+    font-size: var(--t-100);
+    letter-spacing: var(--ls-etiquette);
+    text-transform: uppercase;
+  }
+  .bandeau__nav a {
+    color: var(--papier);
+    text-decoration: none;
+    padding-block: 0.6rem;
+  }
+  .bandeau__nav a[aria-current='page'] {
+    border-bottom: 1px solid var(--reactif);
+  }
+  .bandeau__nav a.bouton {
+    color: var(--reactif);
+    padding: 0.7rem 1.1rem;
+  }
+
+  .bandeau__bascule {
+    display: none;
+    width: 44px;
+    height: 44px;
+    background: none;
+    border: 0;
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+  }
+  .bandeau__traits {
+    display: grid;
+    gap: 6px;
+    width: 22px;
+  }
+  .bandeau__traits i {
+    display: block;
+    height: 1px;
+    background: var(--papier);
+    transition: transform var(--duree) var(--courbe);
+    transform-origin: center;
+  }
+  /* Les deux traits se croisent quand le menu est ouvert. La transition
+     existait déjà mais aucune règle ne posait jamais le « transform » :
+     l'état du bouton n'était lisible que par un lecteur d'écran. */
+  .bandeau__bascule[aria-expanded='true'] .bandeau__traits i:first-child {
+    transform: translateY(3.5px) rotate(45deg);
+  }
+  .bandeau__bascule[aria-expanded='true'] .bandeau__traits i:last-child {
+    transform: translateY(-3.5px) rotate(-45deg);
+  }
+
+  @media (max-width: 47.99rem) {
+    .bandeau__bascule {
+      display: flex;
+    }
+    .bandeau__nav {
+      /* « absolute; top: 100% » plutôt que « fixed » calé sur la hauteur
+         du bandeau. Le backdrop-filter du bandeau en fait déjà le bloc
+         conteneur de ses descendants fixés : le menu tombait au bon
+         endroit par coïncidence arithmétique, et toute modification de
+         --hauteur-bandeau l'aurait décalé du double. */
+      position: absolute;
+      inset: 100% 0 auto 0;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0;
+      background: var(--abysse);
+      border-bottom: 1px solid var(--filet-nuit);
+      padding: var(--e-4) var(--gouttiere) var(--e-5);
+      display: none;
+    }
+    .bandeau__nav.ouvert {
+      display: flex;
+    }
+    .bandeau__nav a {
+      width: 100%;
+      padding-block: var(--e-4);
+      border-bottom: 1px solid var(--filet-nuit);
+    }
+    .bandeau__nav a.bouton {
+      margin-top: var(--e-4);
+      width: auto;
+      border-bottom: 1px solid var(--reactif);
+    }
+  }
+</style>

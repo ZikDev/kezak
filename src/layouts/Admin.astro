@@ -1,0 +1,172 @@
+---
+import '../styles/tokens.css';
+import '../styles/base.css';
+import '../styles/admin.css';
+import { MENU, messageErreur } from '../lib/admin';
+
+interface Props {
+  titre: string;
+  sousTitre?: string;
+  /** Lien « Voir la page » vers la page publique correspondante. */
+  voir?: string;
+  /** Fil d'Ariane : la page parente, quand il y en a une. */
+  parent?: { href: string; libelle: string };
+  /** Pastille d'état à côté du titre — « Publié » / « Brouillon ». */
+  etat?: { texte: string; ton?: 'publie' | 'brouillon' };
+}
+const { titre, sousTitre = '', voir, parent, etat } = Astro.props;
+const ici = Astro.url.pathname;
+const groupes = [...new Set(MENU.map((m) => m.groupe))];
+const utilisateur = Astro.locals.utilisateur;
+const csrf = Astro.locals.csrf;
+const ok = Astro.url.searchParams.get('ok');
+const err = Astro.url.searchParams.get('err');
+
+const estActif = (href: string) => ici === href || (href !== '/admin' && ici.startsWith(href));
+---
+
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>{titre} — Admin Kezak</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <script src="/js/admin.js" defer is:inline></script>
+  </head>
+  <body class="adm">
+    <a class="evitement" href="#adm-corps">Aller au contenu</a>
+
+    {/* Barre visible seulement sur petit écran : la colonne devient un tiroir. */}
+    <div class="adm__barre">
+      <a class="adm__marque" href="/admin">
+        <span class="adm__mono" aria-hidden="true">K</span>
+        <span class="adm__nom">Kezak</span>
+      </a>
+      <button
+        class="adm__menu"
+        type="button"
+        aria-expanded="false"
+        aria-controls="adm-nav"
+        data-menu
+      >
+        <span class="adm__menu__traits" aria-hidden="true"><i></i><i></i><i></i></span>
+        Menu
+      </button>
+    </div>
+
+    <aside class="adm__cote" id="adm-nav">
+      <a class="adm__marque adm__marque--large" href="/admin">
+        <span class="adm__mono" aria-hidden="true">K</span>
+        <span class="adm__nom">Kezak</span>
+        <span class="adm__role">Administration</span>
+      </a>
+
+      <nav class="adm__nav" aria-label="Sections de l'administration">
+        {
+          groupes.map((g) => (
+            <div class="adm__bloc-nav">
+              {g && <p class="adm__groupe">{g}</p>}
+              <ul>
+                {MENU.filter((m) => m.groupe === g).map((m) => (
+                  <li>
+                    <a href={m.href} aria-current={estActif(m.href) ? 'page' : undefined}>
+                      <span class="adm__puce" aria-hidden="true"></span>
+                      {m.libelle}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))
+        }
+      </nav>
+
+      <div class="adm__pied">
+        <p class="adm__qui" title={utilisateur?.email}>{utilisateur?.email}</p>
+        <a class="adm__lien-site" href="/" target="_blank" rel="noopener">
+          Voir le site <span aria-hidden="true">↗</span>
+        </a>
+        <form method="post" action="/admin/api/deconnexion" data-sans-garde>
+          <input type="hidden" name="csrf" value={csrf} />
+          <button class="adm__bouton adm__bouton--discret" type="submit">Se déconnecter</button>
+        </form>
+      </div>
+    </aside>
+
+    <main class="adm__corps" id="adm-corps">
+      <header class="adm__tete">
+        <div class="adm__tete__texte">
+          {
+            parent && (
+              <p class="adm__fil">
+                <a href={parent.href}>{parent.libelle}</a>
+                <span aria-hidden="true"> / </span>
+              </p>
+            )
+          }
+          <h1 class="adm__titre">
+            {titre}
+            {
+              etat && (
+                <span class:list={['adm__pastille', etat.ton && `adm__pastille--${etat.ton}`]}>
+                  {etat.texte}
+                </span>
+              )
+            }
+          </h1>
+          {sousTitre && <p class="adm__sous">{sousTitre}</p>}
+        </div>
+        {
+          voir && (
+            <a class="adm__bouton adm__bouton--discret" href={voir} target="_blank" rel="noopener">
+              Voir la page <span aria-hidden="true">↗</span>
+            </a>
+          )
+        }
+      </header>
+
+      {/*
+        Le sommaire est construit par le script à partir des sections
+        présentes : chaque page l'obtient sans avoir à le déclarer, et il
+        disparaît de lui-même quand il n'y a qu'une section.
+      */}
+      <nav class="adm__sommaire" aria-label="Sections de cette page" hidden data-sommaire></nav>
+
+      {/*
+        Collé en haut du cadre, et pas seulement posé au-dessus du
+        contenu. Après un enregistrement, le serveur renvoie vers la
+        section concernée : la page s'ouvrait donc à mi-hauteur, et le
+        message de confirmation restait au-dessus de la ligne de
+        flottaison, où personne ne l'a jamais vu.
+
+        « tabindex="-1" » plus une mise au point par le script : une zone
+        « aria-live » n'annonce que ce qui y apparaît APRÈS son
+        existence, et ces messages sont rendus par le serveur, donc
+        présents dès le chargement. Ils n'étaient annoncés nulle part.
+      */}
+      <div class="adm__annonces" aria-live="polite">
+        {
+          ok && (
+            <p class="adm__message" role="status" tabindex="-1" data-annonce data-ephemere>
+              <span aria-hidden="true">✓</span> Modifications enregistrées.
+            </p>
+          )
+        }
+        {
+          err && (
+            <p class="adm__message adm__message--erreur" role="alert" tabindex="-1" data-annonce>
+              <span aria-hidden="true">✕</span> {messageErreur(err)}
+            </p>
+          )
+        }
+      </div>
+
+      <slot />
+    </main>
+
+    {/* Rideau du tiroir de navigation, sur petit écran. */}
+    <div class="adm__rideau" data-rideau hidden></div>
+  </body>
+</html>

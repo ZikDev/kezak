@@ -1,0 +1,407 @@
+---
+import Base from '../layouts/Base.astro';
+import Media from '../components/Media.astro';
+import Grain from '../components/Grain.astro';
+import Lignes from '../components/Lignes.astro';
+import { prestations, methode, faq, parcours, tousReglages, media } from '../lib/db';
+
+const r = tousReglages();
+const lesPrestations = prestations();
+const laMethode = methode();
+const lesQuestions = faq();
+const leParcours = parcours();
+const portrait = media(Number(r.portrait_id) || 0);
+---
+
+<Base titre="Studio" description={r.studio_description} actif="studio">
+  <header class="heros">
+    <div class="heros__fond">
+      {portrait && <Media media={portrait} ratio="16 / 9" tailles="100vw" prioritaire classe="heros__image" />}
+      <Grain id="studio" opacite={0.28} />
+    </div>
+    <div class="heros__voile" aria-hidden="true"></div>
+    <div class="contenu heros__bloc">
+      <p class="etiquette etiquette--accent">Le studio</p>
+      <h1 class="heros__titre"><Lignes texte={r.studio_titre || 'Kezak est le studio\nde Victor Bertschy.'} /></h1>
+      <span class="tiret" aria-hidden="true"></span>
+      <p class="heros__texte">{r.studio_intro || ''}</p>
+    </div>
+  </header>
+
+  <div class="planche" data-mode="planche">
+    {
+      lesPrestations.length > 0 && (
+        <section class="contenu bloc differe" aria-labelledby="s-prestations">
+          <div class="bloc__tete">
+            <p class="etiquette etiquette--accent" id="s-prestations">01 — Ce que je fais</p>
+            <p class="mono">{r.prestations_note || 'Périmètre fermé'}</p>
+          </div>
+          <hr class="filet" />
+          <div class="prestations">
+            {lesPrestations.map((p) => (
+              <article class="prestation entree">
+                <h2 class="prestation__titre">{p.titre}</h2>
+                {p.meta && <p class="mono prestation__meta">{p.meta}</p>}
+                <p>{p.corps}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+      )
+    }
+
+    {
+      laMethode.length > 0 && (
+        <section class="contenu bloc deux-colonnes differe" aria-labelledby="s-methode">
+          <aside class="marge">
+            <p class="etiquette etiquette--accent" id="s-methode">02 — Comment je travaille</p>
+            <hr class="filet" />
+            <dl class="mono infos">
+              <div><dt>Disponibilité</dt><dd>{r.disponibilite || 'Réponse sous 1 semaine'}</dd></div>
+              <div><dt>Langues</dt><dd>{r.langues || 'Français · Anglais'}</dd></div>
+              <div><dt>Outils</dt><dd>{r.outils || 'Astro · CSS · Figma · Premiere'}</dd></div>
+            </dl>
+          </aside>
+          <ol class="methode">
+            {laMethode.map((m, i) => (
+              <li class="methode__pas entree">
+                <span class="mono methode__num">{String(i + 1).padStart(2, '0')}</span>
+                <p><strong>{m.titre}</strong> {m.corps}</p>
+              </li>
+            ))}
+          </ol>
+        </section>
+      )
+    }
+
+    {
+      lesQuestions.length > 0 && (
+        <section class="contenu bloc deux-colonnes differe" aria-labelledby="s-faq">
+          <aside class="marge">
+            <p class="etiquette etiquette--accent" id="s-faq">03 — Questions fréquentes</p>
+            <hr class="filet" />
+            <p class="marge__note">{r.faq_note || 'Les réponses que je donnerais de toute façon au téléphone.'}</p>
+          </aside>
+          <div class="faq">
+            {lesQuestions.map((q) => (
+              <details class="faq__item">
+                <summary>
+                  <span class="faq__question">{q.question}</span>
+                  <span class="faq__signe mono" aria-hidden="true">+</span>
+                </summary>
+                <p>{q.reponse}</p>
+              </details>
+            ))}
+          </div>
+        </section>
+      )
+    }
+  </div>
+
+  {
+    leParcours.length > 0 && (
+      <section class="contenu bloc deux-colonnes differe" aria-labelledby="s-parcours">
+        <p class="etiquette etiquette--accent" id="s-parcours">04 — Le parcours</p>
+        <ol class="parcours">
+          {leParcours.map((p) => (
+            <li class="parcours__ligne mono">
+              <span class="parcours__periode">{p.periode}</span>
+              <span>{p.texte}</span>
+            </li>
+          ))}
+        </ol>
+      </section>
+    )
+  }
+
+  <div class="contenu differe differe--court">
+    <aside class="appel">
+      <div>
+        <h2 class="appel__titre">{r.appel_titre || 'Dites-moi ce que vous avez en tête.'}</h2>
+        <p>{r.appel_texte || 'Trois lignes suffisent. Réponse sous une semaine.'}</p>
+      </div>
+      <div class="appel__actions">
+        <a class="bouton bouton--plein" href="/contact">Parlons-en</a>
+        <a class="mono appel__mail" href={`mailto:${r.email || 'contact@kezak.ch'}`}>{r.email || 'contact@kezak.ch'}</a>
+      </div>
+    </aside>
+  </div>
+</Base>
+
+<style>
+  .heros {
+    position: relative;
+    min-height: 62vh;
+    min-height: 62svh;
+    display: flex;
+    align-items: center;
+    padding-block: calc(var(--hauteur-bandeau) + var(--e-6)) var(--e-6);
+    overflow: hidden;
+    overflow: clip;
+    isolation: isolate;
+  }
+  .heros__fond {
+    position: absolute;
+    inset: 0;
+    z-index: -2;
+    background: linear-gradient(112deg, #0a1428 0%, #13304f 32%, #3c6e96 64%, #a9c8df 100%);
+  }
+  .heros__fond :global(.heros__image),
+  .heros__fond :global(.heros__image img) {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .heros__voile {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: linear-gradient(90deg, rgba(10, 20, 40, 0.94) 0%, rgba(10, 20, 40, 0.74) 44%, rgba(10, 20, 40, 0.1) 100%);
+  }
+  /* Sur écran étroit, le bloc de texte occupe toute la largeur : le voile
+     horizontal laissait la fin de chaque ligne sur la partie claire de la
+     photo. Il passe à la verticale. */
+  @media (max-width: 61.99rem) {
+    .heros__voile {
+      background: linear-gradient(
+        180deg,
+        rgba(10, 20, 40, 0.86) 0%,
+        rgba(10, 20, 40, 0.8) 62%,
+        rgba(10, 20, 40, 0.55) 100%
+      );
+    }
+  }
+  .heros__bloc {
+    display: flex;
+    flex-direction: column;
+    gap: var(--e-4);
+    max-width: 44rem;
+  }
+  .heros__titre {
+    font-size: var(--t-700);
+  }
+  .heros__texte {
+    color: var(--texte-doux);
+    font-size: var(--t-400);
+  }
+  .tiret {
+    display: block;
+    width: 5rem;
+    height: 1px;
+    background: var(--reactif);
+  }
+
+  .planche {
+    background: var(--fond);
+    color: var(--texte);
+  }
+  .bloc {
+    padding-block: var(--e-7);
+    display: flex;
+    flex-direction: column;
+    gap: var(--e-5);
+  }
+  .bloc__tete {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--e-4);
+    flex-wrap: wrap;
+  }
+  /* Deux colonnes bornées, calées sur le bord gauche : le surplus de
+     largeur reste vide à droite, et les filets, eux, traversent tout
+     l'écran. C'est la composition d'une planche — marge, colonne de
+     lecture, blanc — et non une boîte centrée qui flotte. */
+  .deux-colonnes {
+    display: grid;
+    grid-template-columns: minmax(0, 17rem) minmax(0, 62rem);
+    gap: var(--e-6);
+    align-items: start;
+  }
+  .marge {
+    display: flex;
+    flex-direction: column;
+    gap: var(--e-3);
+  }
+  .marge__note {
+    color: var(--texte-doux);
+    font-style: italic;
+    font-size: var(--t-200);
+  }
+  .infos {
+    margin: 0;
+    font-size: var(--t-100);
+    letter-spacing: 0.1em;
+    color: var(--texte-doux);
+    display: flex;
+    flex-direction: column;
+    gap: var(--e-3);
+  }
+  .infos dt {
+    color: var(--texte);
+    text-transform: uppercase;
+  }
+  .infos dd {
+    margin: 0;
+    text-transform: uppercase;
+  }
+
+  .prestations {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+    gap: var(--e-5);
+  }
+  .prestation {
+    display: flex;
+    flex-direction: column;
+    gap: var(--e-3);
+  }
+  .prestation + .prestation {
+    border-left: 1px solid var(--filet);
+    padding-left: var(--e-5);
+  }
+  .prestation__titre {
+    font-family: var(--display);
+    font-weight: 300;
+    font-size: var(--t-500);
+  }
+  .prestation__meta {
+    color: var(--accent);
+  }
+  .prestation p:last-child {
+    color: var(--texte-doux);
+  }
+
+  .methode {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .methode__pas {
+    display: flex;
+    gap: var(--e-4);
+    padding-block: var(--e-4);
+    border-bottom: 1px solid var(--filet);
+  }
+  .methode__num {
+    color: var(--accent);
+    flex: none;
+    padding-top: 0.35em;
+  }
+  .methode strong {
+    font-weight: 400;
+  }
+
+  .faq {
+    max-width: 100%;
+  }
+  .faq__item p {
+    max-width: var(--mesure);
+  }
+  .faq__item {
+    border-top: 1px solid var(--filet);
+  }
+  .faq__item:last-child {
+    border-bottom: 1px solid var(--filet);
+  }
+  .faq__item summary {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--e-4);
+    padding-block: var(--e-4);
+    cursor: pointer;
+    list-style: none;
+    min-height: 44px;
+  }
+  .faq__item summary::-webkit-details-marker {
+    display: none;
+  }
+  .faq__question {
+    font-family: var(--display);
+    font-weight: 400;
+    font-size: var(--t-400);
+  }
+  .faq__signe {
+    color: var(--accent);
+    flex: none;
+  }
+  .faq__item[open] .faq__signe {
+    transform: rotate(45deg);
+  }
+  .faq__item p {
+    color: var(--texte-doux);
+    padding-bottom: var(--e-4);
+  }
+
+  .parcours {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .parcours__ligne {
+    display: flex;
+    gap: var(--e-5);
+    padding-block: var(--e-3);
+    border-bottom: 1px solid var(--filet);
+    color: var(--texte);
+    font-size: var(--t-200);
+    letter-spacing: 0.08em;
+  }
+  .parcours__periode {
+    width: 7rem;
+    flex: none;
+    color: var(--texte-doux);
+  }
+
+  .appel {
+    margin-bottom: var(--e-7);
+    border: 1px solid var(--reactif);
+    padding: var(--e-5);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--e-5);
+    flex-wrap: wrap;
+  }
+  .appel__titre {
+    font-size: var(--t-600);
+  }
+  .appel p {
+    color: var(--texte-doux);
+    margin-top: var(--e-2);
+  }
+  .appel__actions {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: var(--e-3);
+  }
+  .appel__mail {
+    color: var(--brume);
+    text-decoration: none;
+  }
+
+  @media (max-width: 61.99rem) {
+    .deux-colonnes {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .prestation + .prestation {
+      border-left: 0;
+      padding-left: 0;
+      border-top: 1px solid var(--filet);
+      padding-top: var(--e-5);
+    }
+    .appel__actions {
+      align-items: flex-start;
+    }
+    .parcours__ligne {
+      flex-direction: column;
+      gap: var(--e-1);
+    }
+    .parcours__periode {
+      width: auto;
+    }
+  }
+</style>

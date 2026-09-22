@@ -1,0 +1,203 @@
+---
+import Admin from '../../layouts/Admin.astro';
+import ListeOrdonnee from '../../components/admin/ListeOrdonnee.astro';
+import ChoixMedia from '../../components/admin/ChoixMedia.astro';
+import { db, prestations, methode, faq, parcours, tousReglages } from '../../lib/db';
+
+const csrf = Astro.locals.csrf;
+const retour = '/admin/studio';
+const r = tousReglages();
+const images = db
+  .prepare("SELECT id, type, alt, fichier, variantes FROM medias WHERE type = 'image' ORDER BY id DESC")
+  .all() as any[];
+---
+
+<Admin titre="Studio" sousTitre="Les sections dans l'ordre de la page." voir="/studio">
+  <section class="adm__section">
+    <header><h2 class="adm__num">00 — En-tête</h2></header>
+    <p class="adm__aide">
+      Le portrait en fond et la phrase d'accroche. Un retour à la ligne dans le titre coupe la
+      phrase en deux.
+    </p>
+    <form method="post" action="/admin/api/enregistrer">
+      <input type="hidden" name="csrf" value={csrf} />
+      <input type="hidden" name="retour" value={retour} />
+      <p class="adm__champ">
+        <label for="studio_titre">Titre</label>
+        <textarea id="studio_titre" name="r_studio_titre" rows="2" set:text={r.studio_titre} />
+      </p>
+      <p class="adm__champ">
+        <label for="studio_intro">Texte d'introduction</label>
+        <textarea id="studio_intro" name="r_studio_intro" rows="3" set:text={r.studio_intro} />
+      </p>
+      <ChoixMedia
+        id="portrait_id"
+        nom="r_portrait_id"
+        libelle="Portrait (traité en bichromie)"
+        valeur={r.portrait_id}
+        genre="image"
+        medias={images}
+        vide="— aucun —"
+        aide="Affiché en fond de l'en-tête, sous un voile sombre."
+      />
+      <p class="adm__champ">
+        <label for="studio_description">Description pour les moteurs de recherche</label>
+        <input type="text" id="studio_description" name="r_studio_description" value={r.studio_description} />
+      </p>
+      <div class="adm__actions">
+        <button class="adm__bouton adm__bouton--plein" type="submit">Enregistrer</button>
+      </div>
+    </form>
+
+    <form method="post" action="/admin/api/televerser" enctype="multipart/form-data" class="envoi">
+      <input type="hidden" name="csrf" value={csrf} />
+      <input type="hidden" name="retour" value={retour} />
+      <input type="hidden" name="portrait" value="1" />
+      <div class="adm__duo">
+        <p class="adm__champ">
+          <label for="f-portrait">Envoyer un nouveau portrait</label>
+          <input type="file" id="f-portrait" name="fichier" accept="image/*" data-limite-image-mo="15" required />
+        </p>
+        <p class="adm__champ">
+          <label for="a-portrait">Texte alternatif</label>
+          <input type="text" id="a-portrait" name="alt" value="Portrait de Victor Bertschy" />
+        </p>
+      </div>
+      <div class="adm__actions">
+        <button class="adm__bouton adm__bouton--plein" type="submit">Envoyer</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="adm__section">
+    <header><h2 class="adm__num">01 — Ce que je fais</h2></header>
+    <form method="post" action="/admin/api/enregistrer" class="mini">
+      <input type="hidden" name="csrf" value={csrf} />
+      <input type="hidden" name="retour" value={retour} />
+      <p class="adm__champ">
+        <label for="prestations_note">Mention à droite du titre</label>
+        <input type="text" id="prestations_note" name="r_prestations_note" value={r.prestations_note} />
+      </p>
+      <div class="adm__actions">
+        <button class="adm__bouton adm__bouton--plein" type="submit">Enregistrer</button>
+      </div>
+    </form>
+    <ListeOrdonnee
+      table="prestations"
+      lignes={prestations()}
+      retour={retour}
+      libelleAjout="Ajouter une prestation"
+      champs={[
+        { nom: 'titre', libelle: 'Titre' },
+        { nom: 'meta', libelle: 'Mention — délai, sur devis' },
+        { nom: 'corps', libelle: 'Description', type: 'zone', lignes: 4 },
+      ]}
+    />
+  </section>
+
+  <section class="adm__section">
+    <header><h2 class="adm__num">02 — Comment je travaille</h2></header>
+    <form method="post" action="/admin/api/enregistrer" class="mini">
+      <input type="hidden" name="csrf" value={csrf} />
+      <input type="hidden" name="retour" value={retour} />
+      <div class="adm__duo">
+        <p class="adm__champ">
+          <label for="disponibilite">Disponibilité</label>
+          <input type="text" id="disponibilite" name="r_disponibilite" value={r.disponibilite} />
+        </p>
+        <p class="adm__champ">
+          <label for="langues">Langues</label>
+          <input type="text" id="langues" name="r_langues" value={r.langues} />
+        </p>
+        <p class="adm__champ">
+          <label for="outils">Outils</label>
+          <input type="text" id="outils" name="r_outils" value={r.outils} />
+        </p>
+      </div>
+      <div class="adm__actions">
+        <button class="adm__bouton adm__bouton--plein" type="submit">Enregistrer</button>
+      </div>
+    </form>
+    <ListeOrdonnee
+      table="methode"
+      lignes={methode()}
+      retour={retour}
+      libelleAjout="Ajouter un engagement"
+      champs={[
+        { nom: 'titre', libelle: 'La phrase en gras' },
+        { nom: 'corps', libelle: 'La suite', type: 'zone', lignes: 3 },
+      ]}
+    />
+  </section>
+
+  <section class="adm__section">
+    <header><h2 class="adm__num">03 — Questions fréquentes</h2></header>
+    <form method="post" action="/admin/api/enregistrer" class="mini">
+      <input type="hidden" name="csrf" value={csrf} />
+      <input type="hidden" name="retour" value={retour} />
+      <p class="adm__champ">
+        <label for="faq_note">Mention en marge</label>
+        <input type="text" id="faq_note" name="r_faq_note" value={r.faq_note} />
+      </p>
+      <div class="adm__actions">
+        <button class="adm__bouton adm__bouton--plein" type="submit">Enregistrer</button>
+      </div>
+    </form>
+    <ListeOrdonnee
+      table="faq"
+      lignes={faq()}
+      retour={retour}
+      libelleAjout="Ajouter une question"
+      champs={[
+        { nom: 'question', libelle: 'Question' },
+        { nom: 'reponse', libelle: 'Réponse', type: 'zone', lignes: 5 },
+      ]}
+    />
+  </section>
+
+  <section class="adm__section">
+    <header><h2 class="adm__num">04 — Le parcours</h2></header>
+    <p class="adm__aide">
+      Quatre à sept lignes suffisent. Mettez en tête ce qu'un client retiendra, pas ce qui est
+      le plus récent.
+    </p>
+    <ListeOrdonnee
+      table="parcours"
+      lignes={parcours()}
+      retour={retour}
+      libelleAjout="Ajouter une ligne"
+      champs={[
+        { nom: 'periode', libelle: 'Période' },
+        { nom: 'texte', libelle: 'Texte' },
+      ]}
+    />
+  </section>
+
+  <section class="adm__section">
+    <header><h2 class="adm__num">05 — Appel final</h2></header>
+    <form method="post" action="/admin/api/enregistrer">
+      <input type="hidden" name="csrf" value={csrf} />
+      <input type="hidden" name="retour" value={retour} />
+      <p class="adm__champ">
+        <label for="appel_titre">Titre</label>
+        <input type="text" id="appel_titre" name="r_appel_titre" value={r.appel_titre} />
+      </p>
+      <p class="adm__champ">
+        <label for="appel_texte">Texte</label>
+        <textarea id="appel_texte" name="r_appel_texte" rows="2" set:text={r.appel_texte} />
+      </p>
+      <div class="adm__actions">
+        <button class="adm__bouton adm__bouton--plein" type="submit">Enregistrer</button>
+      </div>
+    </form>
+  </section>
+</Admin>
+
+<style>
+  .envoi,
+  .mini {
+    margin-bottom: var(--e-4);
+    padding-bottom: var(--e-4);
+    border-bottom: 1px solid var(--filet-papier);
+  }
+</style>

@@ -1,0 +1,32 @@
+{
+  "name": "kezak",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Site et back-office de Kezak — studio de Victor Bertschy",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "node ./dist/server/entry.mjs",
+    "start": "node ./dist/server/entry.mjs",
+    "migrate": "node scripts/migrate.mjs",
+    "seed": "node scripts/seed.mjs",
+    "compte": "node scripts/creer-compte.mjs",
+    "sauvegarde": "node scripts/sauvegarde.mjs",
+    "verif": "node scripts/verif.mjs",
+    "polices": "node scripts/polices.mjs"
+  },
+  "dependencies": {
+    "@astrojs/node": "^9.2.0",
+    "astro": "^5.6.0",
+    "better-sqlite3": "^13.0.0",
+    "nodemailer": "^6.10.0",
+    "sharp": "^0.34.1"
+  },
+  "engines": {
+    "node": ">=20.12"
+  },
+  "devDependencies": {
+    "wawoff2": "^2.0.1"
+  }
+}

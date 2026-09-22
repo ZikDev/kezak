@@ -1,0 +1,305 @@
+---
+import Base from '../layouts/Base.astro';
+import VideoFond from '../components/VideoFond.astro';
+import Lignes from '../components/Lignes.astro';
+import { ecransAccueil, media, projetParId, tousReglages } from '../lib/db';
+
+const r = tousReglages();
+const ecrans = ecransAccueil();
+---
+
+<Base titre={r.site_nom || 'Kezak'} description={r.seo_description} bandeauDifferre={true}>
+  {
+    ecrans.map((e, i) => {
+      const projet = e.projet_id ? projetParId(e.projet_id) : null;
+      const fond = media(e.media_id);
+      const video = media(e.video_id);
+
+      if (e.genre === 'immersion') {
+        return (
+          <section class="ecran ecran--immersion" aria-labelledby="titre-accueil">
+            {/* Aucune image : le dégradé et le grain portent l'univers à eux seuls. */}
+            <VideoFond id={`e${e.id}`} grain={0.3} />
+            <div class="ecran__fondu" aria-hidden="true" />
+            <div class="immersion__haut contenu coins">
+              <span class="monogramme" aria-hidden="true">K</span>
+              <a class="immersion__lien mono" href="/contact">Parlons-en</a>
+            </div>
+            <div class="immersion__centre">
+              <span class="trait trait--haut" aria-hidden="true" />
+              <h1 id="titre-accueil" class="logotype">{e.titre || 'Kezak'}</h1>
+              <span class="trait trait--bas" aria-hidden="true" />
+            </div>
+            <div class="immersion__bas contenu coins">
+              <p class="mono">{e.surtitre || 'Romont · Suisse'}</p>
+              <a class="descendre mono" href="#suite">
+                Descendre
+                <span class="descendre__trait" aria-hidden="true" />
+              </a>
+            </div>
+          </section>
+        );
+      }
+
+      if (e.genre === 'phrase') {
+        return (
+          <section id="suite" class="ecran ecran--phrase" aria-labelledby={`t-${e.id}`}>
+            <VideoFond
+              id={`e${e.id}`}
+              poster={fond}
+              video={video}
+              degrade="linear-gradient(112deg, #0a1428 0%, #13304f 32%, #3c6e96 64%, #a9c8df 100%)"
+              voile="linear-gradient(90deg, rgba(10,20,40,.94) 0%, rgba(10,20,40,.74) 44%, rgba(10,20,40,.10) 100%)"
+              voileEtroit="linear-gradient(180deg, rgba(10,20,40,.88) 0%, rgba(10,20,40,.80) 62%, rgba(10,20,40,.55) 100%)"
+            />
+            <div class="ecran__fondu" aria-hidden="true" />
+            <div class="contenu phrase__bloc panneau entree">
+              {e.surtitre && <p class="etiquette etiquette--accent">{e.surtitre}</p>}
+              <h2 id={`t-${e.id}`} class="phrase__titre"><Lignes texte={e.titre} /></h2>
+              <span class="tiret" aria-hidden="true" />
+              <p class="phrase__texte">{e.texte}</p>
+            </div>
+          </section>
+        );
+      }
+
+      if (e.genre === 'projet' && projet) {
+        return (
+          <section class="ecran ecran--projet" aria-labelledby={`t-${e.id}`}>
+            <VideoFond
+              id={`e${e.id}`}
+              poster={fond || media(projet.hero_id)}
+              video={video || media(projet.video_fond_id)}
+              degrade="linear-gradient(148deg, #c6dbeb 0%, #5f8fb8 26%, #1e4874 60%, #0a1428 100%)"
+              voile="linear-gradient(200deg, rgba(10,20,40,.62) 0%, rgba(10,20,40,.20) 34%, rgba(10,20,40,.88) 100%)"
+              voileEtroit="linear-gradient(180deg, rgba(10,20,40,.72) 0%, rgba(10,20,40,.34) 30%, rgba(10,20,40,.92) 100%)"
+            />
+            <div class="ecran__fondu" aria-hidden="true" />
+            <div class="contenu coins projet__haut">
+              <span class="mono">Pl. {String(i - 1).padStart(2, '0')}</span>
+              <span class="mono">{e.surtitre || projet.diffusion || projet.categorie_txt}</span>
+            </div>
+            <div class="contenu coins projet__bas panneau entree">
+              <div class="projet__texte">
+                <h2 id={`t-${e.id}`} class="projet__titre"><Lignes texte={e.titre || projet.titre} /></h2>
+                <p class="projet__role">{e.texte || projet.resume}</p>
+              </div>
+              <a class="bouton projet__lien" href={`/projets/${projet.slug}`}>
+                {e.lien_libelle || 'Voir le projet'}
+                <span class="visuellement-cache"> : {projet.titre}</span>
+              </a>
+            </div>
+          </section>
+        );
+      }
+
+      if (e.genre === 'action') {
+        return (
+          <section class="ecran ecran--action" aria-labelledby={`t-${e.id}`}>
+            <div class="ecran__fondu" aria-hidden="true" />
+            <div class="contenu action__bloc panneau entree">
+              {e.surtitre && <p class="etiquette etiquette--accent">{e.surtitre}</p>}
+              <h2 id={`t-${e.id}`} class="action__titre"><Lignes texte={e.titre} /></h2>
+              {e.texte && <p class="action__texte">{e.texte}</p>}
+              <div class="action__boutons">
+                <a class="bouton bouton--plein" href="/contact">Parlons-en</a>
+                <a class="bouton bouton--discret" href="/projets">Tous les projets</a>
+              </div>
+              <a class="mono action__mail" href={`mailto:${r.email || 'contact@kezak.ch'}`}>
+                {r.email || 'contact@kezak.ch'}
+              </a>
+            </div>
+          </section>
+        );
+      }
+      return null;
+    })
+  }
+</Base>
+
+<style>
+  /* --- Écran d'immersion ------------------------------------------
+     Le padding vertical vaut la gouttière : l'écart au bord est le même
+     en haut, en bas, à gauche et à droite. C'est ce qui fait que les
+     quatre informations sont vraiment posées dans les quatre coins,
+     sur un téléphone comme sur un 32 pouces. */
+  .ecran--immersion {
+    justify-content: space-between;
+    padding-block: var(--gouttiere);
+    text-align: center;
+  }
+  .monogramme {
+    width: 1.4rem;
+    height: 1.4rem;
+    display: grid;
+    place-items: center;
+    border: 1px solid var(--reactif);
+    color: var(--reactif);
+    font-family: var(--display);
+    font-size: 0.8rem;
+    line-height: 1;
+    flex: none;
+  }
+  .immersion__lien {
+    color: var(--papier);
+    text-decoration: none;
+    border-bottom: 1px solid var(--reactif);
+    padding-bottom: 3px;
+  }
+  .immersion__centre {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--e-5);
+  }
+  /* Le logotype se mesure à l'écran, pas à une valeur fixe : il occupe
+     toujours à peu près la même part de la largeur. La borne haute
+     l'empêche de devenir absurde sur un très grand moniteur. */
+  .logotype {
+    font-family: var(--display);
+    font-weight: 200;
+    font-size: clamp(2.8rem, 12.5vw, 11rem);
+    letter-spacing: var(--ls-logo);
+    padding-left: var(--ls-logo);
+    line-height: 1;
+    margin: 0;
+    max-width: 100%;
+    text-transform: uppercase;
+  }
+  .trait {
+    width: 1px;
+    height: clamp(2rem, 6vh, 4rem);
+    display: block;
+  }
+  .trait--haut {
+    background: linear-gradient(180deg, transparent, rgba(233, 237, 242, 0.45));
+  }
+  .trait--bas {
+    background: linear-gradient(180deg, rgba(233, 237, 242, 0.45), transparent);
+  }
+  .immersion__bas {
+    align-items: flex-end;
+  }
+  .descendre {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--e-2);
+    color: var(--brume);
+    text-decoration: none;
+  }
+  .descendre__trait {
+    width: 1px;
+    height: 2.4rem;
+    background: linear-gradient(180deg, var(--reactif), transparent);
+  }
+
+  /* --- Écran « la phrase » ---------------------------------------- */
+  .ecran--phrase {
+    justify-content: center;
+    padding-block: calc(var(--hauteur-bandeau) + var(--e-6)) var(--e-6);
+  }
+  .phrase__bloc {
+    /* Le bloc reste calé sur le bord gauche : il ne se recentre pas quand
+       l'écran s'élargit, il laisse le vide travailler à sa droite. */
+    max-width: 48rem;
+    display: flex;
+    flex-direction: column;
+    gap: var(--e-4);
+  }
+  .phrase__titre {
+    font-size: var(--t-700);
+  }
+  .phrase__texte {
+    color: var(--texte-doux);
+    font-size: var(--t-400);
+  }
+  .tiret {
+    display: block;
+    width: 5rem;
+    height: 1px;
+    background: var(--reactif);
+  }
+
+  /* --- Écrans projet ---------------------------------------------- */
+  .ecran--projet {
+    justify-content: space-between;
+    padding-block: calc(var(--hauteur-bandeau) + var(--e-5)) var(--e-6);
+  }
+  .projet__haut .mono {
+    color: var(--papier);
+  }
+  /* Le texte à gauche, le bouton à droite : les deux extrémités de la
+     ligne du bas, au lieu d'une colonne tassée dans un seul coin. */
+  .projet__bas {
+    align-items: flex-end;
+    gap: var(--e-5);
+  }
+  .projet__texte {
+    display: flex;
+    flex-direction: column;
+    gap: var(--e-4);
+    min-width: 0;
+  }
+  .projet__lien {
+    flex: none;
+  }
+  .projet__titre {
+    font-size: var(--t-800);
+  }
+  .projet__role {
+    color: var(--texte-doux);
+    max-width: 38rem;
+  }
+
+  /* --- Écran d'action --------------------------------------------- */
+  .ecran--action {
+    justify-content: center;
+    padding-block: var(--e-7);
+  }
+  .action__bloc {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--e-4);
+    text-align: center;
+  }
+  .action__titre {
+    font-size: var(--t-700);
+  }
+  .action__texte {
+    color: var(--texte-doux);
+    max-width: 32rem;
+  }
+  .action__boutons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--e-3);
+    justify-content: center;
+    margin-top: var(--e-2);
+  }
+  .action__mail {
+    color: var(--brume);
+    text-decoration: none;
+    margin-top: var(--e-3);
+  }
+
+  /* --- Écrans étroits ---------------------------------------------
+     Les coins n'ont plus de sens sous une certaine largeur : les deux
+     extrémités d'une ligne se retrouveraient à deux centimètres l'une de
+     l'autre. On repasse alors en colonne, alignée à gauche. */
+  @media (max-width: 47.99rem) {
+    .immersion__bas,
+    .projet__haut,
+    .projet__bas {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: var(--e-3);
+    }
+    .projet__bas {
+      gap: var(--e-4);
+    }
+  }
+</style>

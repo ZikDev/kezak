@@ -1,0 +1,369 @@
+---
+import Admin from '../../../layouts/Admin.astro';
+import ChoixMedia from '../../../components/admin/ChoixMedia.astro';
+import ListeOrdonnee from '../../../components/admin/ListeOrdonnee.astro';
+import {
+  db,
+  projetParId,
+  sectionsDuProjet,
+  faitsDuProjet,
+  creditsDuProjet,
+  mediasDuProjet,
+} from '../../../lib/db';
+import { CATEGORIES } from '../../../lib/admin';
+
+const id = Number(Astro.params.id);
+const projet = projetParId(id);
+if (!projet) return Astro.redirect('/admin/projets?err=introuvable', 303);
+
+const csrf = Astro.locals.csrf;
+const retour = `/admin/projets/${id}`;
+const sections = sectionsDuProjet(id);
+const faits = faitsDuProjet(id);
+const credits = creditsDuProjet(id);
+const galerie = mediasDuProjet(id);
+const images = db
+  .prepare("SELECT id, type, alt, fichier, variantes FROM medias WHERE type = 'image' ORDER BY id DESC")
+  .all() as any[];
+const videos = db
+  .prepare("SELECT id, type, alt, fichier, variantes FROM medias WHERE type = 'video' ORDER BY id DESC")
+  .all() as any[];
+
+const vignette = (m: any) => {
+  try {
+    const v = JSON.parse(m.variantes || '{}');
+    return v.webp400 ? `/media/${v.webp400}` : null;
+  } catch {
+    return null;
+  }
+};
+---
+
+<Admin
+  titre={projet.titre}
+  sousTitre="Les sections sont dans l'ordre exact de la page publique."
+  voir={`/projets/${projet.slug}`}
+  parent={{ href: '/admin/projets', libelle: 'Projets' }}
+  etat={
+    projet.statut === 'publie'
+      ? { texte: 'Publié', ton: 'publie' }
+      : { texte: 'Brouillon', ton: 'brouillon' }
+  }
+>
+  <!-- 00 — Publication ------------------------------------------------- -->
+  <section class="adm__section">
+    <header><h2 class="adm__num">00 — Publication</h2></header>
+    <form method="post" action="/admin/api/enregistrer">
+      <input type="hidden" name="csrf" value={csrf} />
+      <input type="hidden" name="table" value="projets" />
+      <input type="hidden" name="id" value={id} />
+      <input type="hidden" name="retour" value={retour} />
+      <div class="adm__duo">
+        <p class="adm__champ">
+          <label for="statut">Statut</label>
+          <select id="statut" name="c_statut">
+            <option value="brouillon" selected={projet.statut === 'brouillon'}>Brouillon</option>
+            <option value="publie" selected={projet.statut === 'publie'}>Publié</option>
+          </select>
+        </p>
+        <p class="adm__champ">
+          <label for="slug">Adresse de la page</label>
+          <input type="text" id="slug" name="c_slug" value={projet.slug} aria-describedby="aide-slug" />
+          <span class="adm__note" id="aide-slug">
+            kezak.ch/projets/<strong>{projet.slug}</strong> — la changer casse les liens déjà
+            partagés et les signets. Accents et espaces sont convertis automatiquement ; laissée
+            vide, elle est recalculée.
+          </span>
+        </p>
+      </div>
+      <label class="adm__case" for="en_avant">
+        <input type="hidden" name="b_en_avant" value="1" />
+        <input type="checkbox" id="en_avant" name="c_en_avant" value="1" checked={!!projet.en_avant} />
+        Mettre en avant — grande vignette en haut de l'annuaire
+      </label>
+      <div class="adm__actions">
+        <button class="adm__bouton adm__bouton--plein" type="submit">Enregistrer</button>
+      </div>
+    </form>
+  </section>
+
+  <!-- 01 — Héros -------------------------------------------------------- -->
+  <section class="adm__section">
+    <header><h2 class="adm__num">01 — Héros</h2></header>
+    <p class="adm__aide">
+      L'image plein cadre, le titre et la phrase qui l'accompagne. Le résumé est ce qui
+      s'affiche sur la vignette de l'annuaire et sur l'écran d'accueil.
+    </p>
+    <form method="post" action="/admin/api/enregistrer">
+      <input type="hidden" name="csrf" value={csrf} />
+      <input type="hidden" name="table" value="projets" />
+      <input type="hidden" name="id" value={id} />
+      <input type="hidden" name="retour" value={retour} />
+
+      <p class="adm__champ">
+        <label for="titre">Titre</label>
+        <input type="text" id="titre" name="c_titre" value={projet.titre} />
+      </p>
+      <p class="adm__champ">
+        <label for="chapeau">Chapeau — la phrase sous le titre</label>
+        <textarea id="chapeau" name="c_chapeau" rows="2" maxlength="240" set:text={projet.chapeau} />
+      </p>
+      <p class="adm__champ">
+        <label for="resume">Résumé — vignette et accueil</label>
+        <textarea id="resume" name="c_resume" rows="2" maxlength="200" set:text={projet.resume} />
+      </p>
+
+      <div class="adm__duo">
+        <p class="adm__champ">
+          <label for="categorie">Catégorie</label>
+          <select id="categorie" name="c_categorie">
+            {CATEGORIES.map((c) => (
+              <option value={c.valeur} selected={projet.categorie === c.valeur}>
+                {c.libelle}
+              </option>
+            ))}
+          </select>
+        </p>
+        <p class="adm__champ">
+          <label for="categorie_txt">Libellé affiché</label>
+          <input type="text" id="categorie_txt" name="c_categorie_txt" value={projet.categorie_txt} />
+        </p>
+        <p class="adm__champ">
+          <label for="annee">Année</label>
+          <input type="text" id="annee" name="c_annee" value={projet.annee} />
+        </p>
+      </div>
+
+      <div class="adm__duo">
+        <ChoixMedia
+          id="hero_id"
+          nom="c_hero_id"
+          libelle="Image du héros"
+          valeur={projet.hero_id}
+          genre="image"
+          medias={images}
+          vide="— aucune —"
+          aide="Plein cadre en haut de la page, et vignette dans l'annuaire."
+        />
+        <ChoixMedia
+          id="video_fond_id"
+          nom="c_video_fond_id"
+          libelle="Boucle vidéo de fond"
+          valeur={projet.video_fond_id}
+          genre="video"
+          medias={videos}
+          vide="— aucune —"
+          aide="Utilisée par l'écran d'accueil qui pointe vers ce projet."
+        />
+      </div>
+
+      <div class="adm__actions">
+        <button class="adm__bouton adm__bouton--plein" type="submit">Enregistrer</button>
+      </div>
+    </form>
+
+    <form method="post" action="/admin/api/televerser" enctype="multipart/form-data" class="envoi">
+      <input type="hidden" name="csrf" value={csrf} />
+      <input type="hidden" name="retour" value={retour} />
+      <input type="hidden" name="projet_id" value={id} />
+      <div class="adm__duo">
+        <p class="adm__champ">
+          <label for="f-hero">Envoyer un fichier</label>
+          <input type="file" id="f-hero" name="fichier" data-limite-image-mo="15" data-limite-video-mo="60" accept="image/*,video/mp4,video/webm" required />
+        </p>
+        <p class="adm__champ">
+          <label for="r-hero">Le rattacher à</label>
+          <select id="r-hero" name="rattacher">
+            <option value="hero">L'image du héros</option>
+            <option value="video_fond">La boucle vidéo de fond</option>
+            <option value="galerie">La galerie</option>
+          </select>
+        </p>
+        <p class="adm__champ">
+          <label for="a-hero">Texte alternatif</label>
+          <input type="text" id="a-hero" name="alt" placeholder="Ce que montre l'image" />
+        </p>
+      </div>
+      <div class="adm__actions">
+        <button class="adm__bouton" type="submit">Envoyer</button>
+      </div>
+    </form>
+  </section>
+
+  <!-- 02 — Métadonnées --------------------------------------------------- -->
+  <section class="adm__section">
+    <header><h2 class="adm__num">02 — Métadonnées et vidéo</h2></header>
+    <p class="adm__aide">
+      La bande de quatre cases sous le héros. Un champ vide ne s'affiche pas. Pour YouTube,
+      collez l'adresse complète : seul l'identifiant est conservé.
+    </p>
+    <form method="post" action="/admin/api/enregistrer">
+      <input type="hidden" name="csrf" value={csrf} />
+      <input type="hidden" name="table" value="projets" />
+      <input type="hidden" name="id" value={id} />
+      <input type="hidden" name="retour" value={retour} />
+      <div class="adm__duo">
+        <p class="adm__champ">
+          <label for="role">Mon rôle</label>
+          <input type="text" id="role" name="c_role" value={projet.role} />
+        </p>
+        <p class="adm__champ">
+          <label for="realisation">Réalisation</label>
+          <input type="text" id="realisation" name="c_realisation" value={projet.realisation} />
+        </p>
+      </div>
+      <div class="adm__duo">
+        <p class="adm__champ">
+          <label for="production">Production</label>
+          <input type="text" id="production" name="c_production" value={projet.production} />
+        </p>
+        <p class="adm__champ">
+          <label for="diffusion">Diffusion</label>
+          <input type="text" id="diffusion" name="c_diffusion" value={projet.diffusion} />
+        </p>
+      </div>
+      <p class="adm__champ">
+        <label for="youtube">Vidéo YouTube</label>
+        <input type="text" id="youtube" name="c_youtube" value={projet.youtube} placeholder="https://youtu.be/…" />
+      </p>
+      <p class="adm__champ">
+        <label for="note">Mention en marge — attribution, co-auteurs</label>
+        <textarea id="note" name="c_note" rows="2" set:text={projet.note} />
+      </p>
+      <div class="adm__actions">
+        <button class="adm__bouton adm__bouton--plein" type="submit">Enregistrer</button>
+      </div>
+    </form>
+  </section>
+
+  <!-- 03 — Fiche technique ----------------------------------------------- -->
+  <section class="adm__section">
+    <header><h2 class="adm__num">03 — Fiche technique</h2></header>
+    <p class="adm__aide">La colonne de gauche, en machine à écrire. Durée, langues, dates, salle.</p>
+    <ListeOrdonnee
+      table="projet_faits"
+      lignes={faits}
+      projetId={id}
+      retour={retour}
+      libelleAjout="Ajouter une ligne"
+      champs={[
+        { nom: 'etiquette', libelle: 'Étiquette' },
+        { nom: 'valeur', libelle: 'Valeur' },
+      ]}
+    />
+  </section>
+
+  <!-- 04 — Étude de cas --------------------------------------------------- -->
+  <section class="adm__section">
+    <header><h2 class="adm__num">04 — Étude de cas</h2></header>
+    <p class="adm__aide">
+      Contexte, problème, ce que j'ai fait, résultat. Séparez les paragraphes par une ligne vide.
+      La numérotation sur le site suit cet ordre.
+    </p>
+    <ListeOrdonnee
+      table="projet_sections"
+      lignes={sections}
+      projetId={id}
+      retour={retour}
+      libelleAjout="Ajouter une section"
+      champs={[
+        { nom: 'titre', libelle: 'Titre de la section' },
+        { nom: 'corps', libelle: 'Texte', type: 'zone', lignes: 7 },
+      ]}
+    />
+  </section>
+
+  <!-- 05 — Citation -------------------------------------------------------- -->
+  <section class="adm__section">
+    <header><h2 class="adm__num">05 — Citation</h2></header>
+    <form method="post" action="/admin/api/enregistrer">
+      <input type="hidden" name="csrf" value={csrf} />
+      <input type="hidden" name="table" value="projets" />
+      <input type="hidden" name="id" value={id} />
+      <input type="hidden" name="retour" value={retour} />
+      <p class="adm__champ">
+        <label for="citation">Citation — sans les guillemets</label>
+        <textarea id="citation" name="c_citation" rows="3" set:text={projet.citation} />
+      </p>
+      <p class="adm__champ">
+        <label for="citation_qui">Qui la dit</label>
+        <input type="text" id="citation_qui" name="c_citation_qui" value={projet.citation_qui} />
+      </p>
+      <div class="adm__actions">
+        <button class="adm__bouton adm__bouton--plein" type="submit">Enregistrer</button>
+      </div>
+    </form>
+  </section>
+
+  <!-- 06 — Galerie ---------------------------------------------------------- -->
+  <section class="adm__section">
+    <header><h2 class="adm__num">06 — Galerie</h2></header>
+    <p class="adm__aide">
+      Les images sont traitées en bichromie automatiquement à l'envoi. Cochez « pleine largeur »
+      pour qu'une image occupe deux colonnes.
+    </p>
+    {
+      galerie.length > 0 && (
+        <div class="apercu">
+          {galerie.map((g) => {
+            const src = vignette(g);
+            return src ? <img src={src} alt={g.alt || ''} width="160" height="120" /> : null;
+          })}
+        </div>
+      )
+    }
+    <ListeOrdonnee
+      table="projet_medias"
+      lignes={galerie}
+      projetId={id}
+      retour={retour}
+      ajout={false}
+      etiquette={(l, i) => `Image ${String(i + 1).padStart(2, '0')} — média #${l.media_id}`}
+      champs={[
+        { nom: 'legende', libelle: 'Légende' },
+        { nom: 'large', libelle: 'Pleine largeur', type: 'case' },
+      ]}
+    />
+  </section>
+
+  <!-- 07 — Générique -------------------------------------------------------- -->
+  <section class="adm__section">
+    <header><h2 class="adm__num">07 — Générique</h2></header>
+    <p class="adm__aide">
+      Nommez aussi les postes que vous n'avez pas tenus : c'est ce qui rend le vôtre crédible.
+      Cochez « c'est moi » pour souligner votre nom.
+    </p>
+    <ListeOrdonnee
+      table="projet_credits"
+      lignes={credits}
+      projetId={id}
+      retour={retour}
+      libelleAjout="Ajouter un poste"
+      champs={[
+        { nom: 'poste', libelle: 'Poste' },
+        { nom: 'noms', libelle: 'Nom(s)' },
+        { nom: 'cest_moi', libelle: "C'est moi — souligner", type: 'case' },
+      ]}
+    />
+  </section>
+</Admin>
+
+<style>
+  .envoi {
+    margin-top: var(--e-4);
+    padding-top: var(--e-4);
+    border-top: 1px solid var(--filet-papier);
+  }
+  .apercu {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    margin-bottom: var(--e-4);
+  }
+  .apercu img {
+    width: 10rem;
+    height: 7.5rem;
+    object-fit: cover;
+    border: 1px solid var(--filet-papier);
+  }
+</style>

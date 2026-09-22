@@ -1,0 +1,201 @@
+---
+import Admin from '../../../layouts/Admin.astro';
+import { db, tousReglages } from '../../../lib/db';
+
+const csrf = Astro.locals.csrf;
+const retour = '/admin/projets';
+const r = tousReglages();
+const projets = db.prepare('SELECT * FROM projets ORDER BY position ASC, id ASC').all() as any[];
+const dateFr = (s: string) => (s ? `${s.slice(8, 10)}.${s.slice(5, 7)}.${s.slice(0, 4)}` : '');
+---
+
+<Admin
+  titre="Projets"
+  sousTitre="L'ordre de cette liste est celui de l'annuaire. Les trois premiers « en avant » occupent la grande grille."
+  voir="/projets"
+>
+  <div class="adm__actions barre">
+    <a class="adm__bouton adm__bouton--plein" href="/admin/projets/nouveau">+ Nouveau projet</a>
+  </div>
+
+  {/*
+    Ces textes étaient éditables dans « Général ». Ils s'affichent sur
+    /projets : quelqu'un qui veut corriger la phrase d'introduction de la
+    page Projets vient sur Projets — il n'a aucune raison d'aller
+    chercher dans Général.
+  */}
+  <section class="adm__section" id="sec-entete">
+    <header><h2 class="adm__num">00 — En-tête de l'annuaire</h2></header>
+    <p class="adm__aide">
+      La phrase qui accompagne le titre de la page, et le bloc de relance en bas de liste.
+    </p>
+    <form method="post" action="/admin/api/enregistrer">
+      <input type="hidden" name="csrf" value={csrf} />
+      <input type="hidden" name="retour" value={retour} />
+      <p class="adm__champ">
+        <label for="annuaire_intro">Phrase d'introduction</label>
+        <textarea id="annuaire_intro" name="r_annuaire_intro" rows="3" maxlength="300" set:text={r.annuaire_intro} />
+      </p>
+      <div class="adm__duo">
+        <p class="adm__champ">
+          <label for="annuaire_relance_titre">Titre du bloc de relance</label>
+          <input type="text" id="annuaire_relance_titre" name="r_annuaire_relance_titre" value={r.annuaire_relance_titre} />
+        </p>
+        <p class="adm__champ">
+          <label for="annuaire_relance_texte">Texte du bloc de relance</label>
+          <input type="text" id="annuaire_relance_texte" name="r_annuaire_relance_texte" value={r.annuaire_relance_texte} />
+        </p>
+      </div>
+      <p class="adm__champ">
+        <label for="annuaire_description">Description de la page — référencement</label>
+        <input
+          type="text"
+          id="annuaire_description"
+          name="r_annuaire_description"
+          value={r.annuaire_description}
+          maxlength="170"
+          aria-describedby="aide-annuaire-desc"
+        />
+        <span class="adm__note" id="aide-annuaire-desc">
+          Environ 155 caractères : au-delà, Google coupe.
+        </span>
+      </p>
+      <div class="adm__actions">
+        <button class="adm__bouton adm__bouton--plein" type="submit">Enregistrer</button>
+      </div>
+    </form>
+  </section>
+
+  {/*
+    La mention du générique s'affiche sur chaque fiche projet, en marge du
+    générique. Sa place est ici, pas dans « Général ».
+  */}
+  <section class="adm__section" id="sec-generique">
+    <header><h2 class="adm__num">01 — Mention en marge du générique</h2></header>
+    <p class="adm__aide">
+      Elle apparaît sur toutes les fiches projet, à côté du générique.
+    </p>
+    <form method="post" action="/admin/api/enregistrer">
+      <input type="hidden" name="csrf" value={csrf} />
+      <input type="hidden" name="retour" value={retour} />
+      <p class="adm__champ">
+        <label for="generique_note">Le texte</label>
+        <textarea id="generique_note" name="r_generique_note" rows="3" maxlength="400" set:text={r.generique_note} />
+      </p>
+      <div class="adm__actions">
+        <button class="adm__bouton adm__bouton--plein" type="submit">Enregistrer</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="adm__section" id="sec-liste">
+    <header><h2 class="adm__num">02 — Les projets</h2></header>
+
+  {
+    projets.length === 0 ? (
+      <div class="adm__vide">
+        <p>
+          Aucun projet pour l'instant. Le premier se crée à partir du gabarit : les quatre temps de
+          l'étude de cas et une première ligne de générique sont posés d'avance.
+        </p>
+        <a class="adm__bouton adm__bouton--plein" href="/admin/projets/nouveau">
+          Créer le premier projet
+        </a>
+      </div>
+    ) : (
+  <div class="adm__tableau">
+  <table>
+    <thead>
+      <tr>
+        <th>Ordre</th>
+        <th>Titre</th>
+        <th>Catégorie</th>
+        <th>Statut</th>
+        <th>En avant</th>
+        <th>Modifié</th>
+        <th><span class="visuellement-cache">Actions</span></th>
+      </tr>
+    </thead>
+    <tbody>
+      {
+        projets.map((p, i) => (
+          <tr>
+            <td>
+              <form method="post" action="/admin/api/ligne" class="fleches">
+                <input type="hidden" name="csrf" value={csrf} />
+                <input type="hidden" name="table" value="projets" />
+                <input type="hidden" name="id" value={p.id} />
+                <input type="hidden" name="retour" value={retour} />
+                <button
+                  class="adm__bouton adm__bouton--discret"
+                  name="action"
+                  value="monter"
+                  disabled={i === 0}
+                  aria-label={`Monter ${p.titre}`}
+                >
+                  ↑
+                </button>
+                <button
+                  class="adm__bouton adm__bouton--discret"
+                  name="action"
+                  value="descendre"
+                  disabled={i === projets.length - 1}
+                  aria-label={`Descendre ${p.titre}`}
+                >
+                  ↓
+                </button>
+              </form>
+            </td>
+            <td>
+              <a href={`/admin/projets/${p.id}`}>{p.titre}</a>
+            </td>
+            <td>{p.categorie_txt || p.categorie}</td>
+            <td>
+              <span class={`adm__pastille adm__pastille--${p.statut}`}>
+                {p.statut === 'publie' ? 'Publié' : 'Brouillon'}
+              </span>
+            </td>
+            <td>{p.en_avant ? 'Oui' : '—'}</td>
+            <td>{dateFr(p.modifie_le)}</td>
+            <td>
+              <form method="post" action="/admin/api/ligne">
+                <input type="hidden" name="csrf" value={csrf} />
+                <input type="hidden" name="table" value="projets" />
+                <input type="hidden" name="id" value={p.id} />
+                <input type="hidden" name="retour" value={retour} />
+                <button
+                  class="adm__bouton adm__bouton--danger"
+                  name="action"
+                  value="supprimer"
+                  data-confirmer={`Supprimer « ${p.titre} » et tout son contenu ? C'est définitif.`}
+                >
+                  Supprimer
+                </button>
+              </form>
+            </td>
+          </tr>
+        ))
+      }
+    </tbody>
+  </table>
+  </div>
+    )
+  }
+  </section>
+</Admin>
+
+<style>
+  .barre {
+    margin-bottom: var(--e-4);
+  }
+  .fleches {
+    flex-direction: row;
+    gap: 0.3rem;
+  }
+  .fleches .adm__bouton,
+  td form .adm__bouton {
+    min-height: 34px;
+    padding: 0.25rem 0.6rem;
+    font-size: 0.66rem;
+  }
+</style>

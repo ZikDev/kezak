@@ -1,0 +1,492 @@
+---
+import Base from '../../layouts/Base.astro';
+import Media from '../../components/Media.astro';
+import Grain from '../../components/Grain.astro';
+import FacadeYoutube from '../../components/FacadeYoutube.astro';
+import {
+  projetParSlug,
+  sectionsDuProjet,
+  faitsDuProjet,
+  creditsDuProjet,
+  mediasDuProjet,
+  projetSuivant,
+  media,
+  tousReglages,
+} from '../../lib/db';
+
+const { slug } = Astro.params;
+const projet = projetParSlug(String(slug));
+
+// Un brouillon reste visible pour un administrateur connecté, invisible
+// pour tout le monde d'autre. La page 404 du site s'affiche, pas une
+// réponse vide.
+if (!projet || (projet.statut !== 'publie' && !Astro.locals.utilisateur)) {
+  return Astro.rewrite('/404');
+}
+
+const r = tousReglages();
+const sections = sectionsDuProjet(projet.id);
+const faits = faitsDuProjet(projet.id);
+const credits = creditsDuProjet(projet.id);
+const galerie = mediasDuProjet(projet.id);
+const suivant = projetSuivant(projet);
+const hero = media(projet.hero_id);
+
+const metas = [
+  ['Mon rôle', projet.role],
+  ['Réalisation', projet.realisation],
+  ['Production', projet.production],
+  ['Diffusion', projet.diffusion],
+].filter(([, v]) => v);
+---
+
+<Base titre={projet.titre} description={projet.resume} actif="projets">
+  {projet.statut !== 'publie' && <p class="brouillon mono">Brouillon — visible seulement parce que vous êtes connecté</p>}
+
+  <article>
+    <header class="heros">
+      <div class="heros__fond">
+        {
+          hero ? (
+            <Media media={hero} ratio="16 / 9" tailles="100vw" prioritaire={true} classe="heros__image" />
+          ) : (
+            <div class="heros__repli" aria-hidden="true" />
+          )
+        }
+        <Grain id={`p${projet.id}`} opacite={0.26} />
+      </div>
+      <div class="heros__voile" aria-hidden="true"></div>
+      <div class="contenu heros__haut">
+        <span class="mono">Pl. 01</span>
+        {projet.annee && <span class="mono">{projet.annee}</span>}
+      </div>
+      <div class="contenu heros__bas">
+        <h1 class="heros__titre">{projet.titre}</h1>
+        {projet.chapeau && <p class="heros__chapeau">{projet.chapeau}</p>}
+      </div>
+    </header>
+
+    {
+      metas.length > 0 && (
+        <div class="contenu bande-meta">
+          {metas.map(([k, v]) => (
+            <div class="bande-meta__case">
+              <p class="etiquette">{k}</p>
+              <p>{v}</p>
+            </div>
+          ))}
+        </div>
+      )
+    }
+
+    {
+      projet.youtube && (
+        <div class="contenu bloc-video differe">
+          <FacadeYoutube youtube={projet.youtube} titre={projet.titre} poster={hero} />
+        </div>
+      )
+    }
+
+    <!-- Bascule sur le mode planche : c'est ici, et seulement ici, qu'on lit. -->
+    <div class="planche differe differe--long" data-mode="planche">
+      <div class="contenu planche__grille">
+        <aside class="marge">
+          {
+            faits.length > 0 && (
+              <>
+                <hr class="filet" />
+                <p class="fiche__titre mono">Fiche technique</p>
+                <dl class="fiche mono">
+                  {faits.map((f) => (
+                    <div class="fiche__ligne">
+                      <dt>{f.etiquette}</dt>
+                      <dd>{f.valeur}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </>
+            )
+          }
+          {projet.note && <><hr class="filet" /><p class="marge__note">{projet.note}</p></>}
+        </aside>
+
+        <div class="corps">
+          {
+            sections.map((s, i) => (
+              <section class="section">
+                <p class="etiquette etiquette--accent">
+                  {String(i + 1).padStart(2, '0')} — {s.titre}
+                </p>
+                {s.corps
+                  .split(/\n{2,}/)
+                  .filter(Boolean)
+                  .map((para) => (
+                    <p>{para}</p>
+                  ))}
+              </section>
+            ))
+          }
+
+          {
+            projet.citation && (
+              <blockquote class="citation">
+                <p>« {projet.citation} »</p>
+                {projet.citation_qui && <cite class="mono">{projet.citation_qui}</cite>}
+              </blockquote>
+            )
+          }
+        </div>
+      </div>
+
+      {
+        galerie.length > 0 && (
+          <div class="contenu galerie">
+            {galerie.map((g) => (
+              <figure class:list={['galerie__item', g.large && 'galerie__item--large']}>
+                <Media
+                  media={g}
+                  ratio={g.large ? '16 / 9' : '4 / 3'}
+                  tailles="(max-width: 48rem) 100vw, 40rem"
+                />
+                {g.legende && <figcaption class="mono">{g.legende}</figcaption>}
+              </figure>
+            ))}
+          </div>
+        )
+      }
+
+      {
+        credits.length > 0 && (
+          <div class="contenu planche__grille generique">
+            <aside class="marge">
+              <p class="etiquette etiquette--accent">Générique</p>
+              <hr class="filet" />
+              <p class="marge__note">
+                {r.generique_note ||
+                  "Extrait du générique du film, tel qu'il y figure. Les postes que je n'ai pas tenus sont nommés aussi : c'est ce qui rend le mien crédible."}
+              </p>
+            </aside>
+            <dl class="credits mono">
+              {credits.map((c) => (
+                <div class="credits__ligne">
+                  <dt>{c.poste}</dt>
+                  <dd>{c.cest_moi ? <mark>{c.noms}</mark> : c.noms}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        )
+      }
+    </div>
+
+    <nav class="sorties contenu differe differe--court" aria-label="Suite">
+      {
+        suivant && suivant.id !== projet.id && (
+          <a class="sortie sortie--grande" href={`/projets/${suivant.slug}`}>
+            <span class="etiquette etiquette--accent">Projet suivant</span>
+            <span class="sortie__titre">{suivant.titre}</span>
+          </a>
+        )
+      }
+      <a class="sortie" href="/projets">
+        <span class="etiquette">Tout le reste</span>
+        <span class="sortie__titre sortie__titre--petit">L'annuaire</span>
+      </a>
+      <a class="sortie sortie--accent" href="/contact">
+        <span class="etiquette etiquette--accent">Un projet comme celui-ci ?</span>
+        <span class="sortie__titre sortie__titre--petit">Parlons-en</span>
+      </a>
+    </nav>
+  </article>
+</Base>
+
+<style>
+  .brouillon {
+    background: var(--reactif);
+    color: var(--abysse);
+    text-align: center;
+    padding: var(--e-3);
+    margin: 0;
+  }
+
+  .heros {
+    position: relative;
+    min-height: 78vh;
+    min-height: 78svh;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding-block: calc(var(--hauteur-bandeau) + var(--e-4)) var(--e-6);
+    overflow: hidden;
+    overflow: clip;
+    isolation: isolate;
+  }
+  .heros__fond {
+    position: absolute;
+    inset: 0;
+    z-index: -2;
+  }
+  .heros__fond :global(.heros__image) {
+    width: 100%;
+    height: 100%;
+  }
+  .heros__fond :global(.heros__image img) {
+    height: 100%;
+    object-fit: cover;
+  }
+  .heros__repli {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(148deg, #c6dbeb 0%, #5f8fb8 26%, #1e4874 60%, #0a1428 100%);
+  }
+  .heros__voile {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    /* Deux couches. La seconde est le dégradé d'ensemble ; la première est
+       une bande sombre en haut, pour le numéro de planche et l'année.
+       Ils étaient posés en blanc sur un voile à 26 % — sur une photo
+       claire, un rapport de 1,8:1, c'est-à-dire illisible. */
+    background:
+      linear-gradient(180deg, rgba(10, 20, 40, 0.78) 0%, rgba(10, 20, 40, 0) 20%),
+      linear-gradient(200deg, rgba(10, 20, 40, 0.26) 0%, rgba(10, 20, 40, 0.16) 38%, rgba(10, 20, 40, 0.9) 100%);
+  }
+  .heros__haut {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--e-4);
+    flex-wrap: wrap;
+  }
+  .heros__haut .mono {
+    color: var(--papier);
+  }
+  .heros__bas {
+    display: flex;
+    flex-direction: column;
+    gap: var(--e-3);
+  }
+  .heros__titre {
+    font-size: var(--t-900);
+  }
+  .heros__chapeau {
+    color: var(--texte-doux);
+    font-size: var(--t-400);
+    max-width: 42rem;
+  }
+
+  .bande-meta {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
+    gap: var(--e-4);
+    padding-block: var(--e-4);
+    border-bottom: 1px solid var(--filet);
+  }
+  .bande-meta__case + .bande-meta__case {
+    border-left: 1px solid var(--filet);
+    padding-left: var(--e-4);
+  }
+  .bande-meta__case p:last-child {
+    margin-top: var(--e-2);
+  }
+
+  .bloc-video {
+    padding-block: var(--e-6);
+  }
+
+  /* --- Mode planche ------------------------------------------------ */
+  .planche {
+    background: var(--fond);
+    color: var(--texte);
+    padding-block: var(--e-7);
+  }
+  .planche__grille {
+    display: grid;
+    grid-template-columns: minmax(0, 17rem) minmax(0, 62rem);
+    gap: var(--e-6);
+    align-items: start;
+  }
+  .marge {
+    display: flex;
+    flex-direction: column;
+    gap: var(--e-4);
+    position: sticky;
+    top: calc(var(--hauteur-bandeau) + var(--e-4));
+  }
+  .marge__note {
+    color: var(--texte-doux);
+    font-size: var(--t-200);
+    font-style: italic;
+  }
+  .fiche {
+    margin: 0;
+    font-size: var(--t-100);
+    letter-spacing: 0.1em;
+    color: var(--texte-doux);
+  }
+  .fiche__titre {
+    color: var(--texte);
+    margin-bottom: var(--e-3);
+  }
+  .fiche__ligne {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--e-3);
+    padding-block: var(--e-2);
+  }
+  .fiche__ligne dd {
+    margin: 0;
+    color: var(--texte);
+    text-align: right;
+  }
+
+  .corps {
+    display: flex;
+    flex-direction: column;
+    gap: var(--e-5);
+    max-width: var(--mesure);
+  }
+  .section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--e-3);
+    padding-bottom: var(--e-5);
+    border-bottom: 1px solid var(--filet);
+  }
+  .section p + p {
+    margin-top: var(--e-3);
+  }
+  .citation {
+    margin: 0;
+    padding-left: var(--e-4);
+    border-left: 2px solid var(--accent);
+    display: flex;
+    flex-direction: column;
+    gap: var(--e-2);
+  }
+  .citation p {
+    font-style: italic;
+    font-size: var(--t-400);
+  }
+  .citation cite {
+    font-style: normal;
+    color: var(--texte-doux);
+  }
+
+  .galerie {
+    margin-top: var(--e-7);
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+    gap: var(--e-4);
+  }
+  .galerie__item {
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--e-2);
+  }
+  .galerie__item--large {
+    grid-column: span 2;
+  }
+  .galerie__item :global(picture),
+  .galerie__item :global(.repli) {
+    border: 1px solid var(--filet);
+  }
+  .galerie figcaption {
+    color: var(--texte-doux);
+    font-size: var(--t-100);
+  }
+
+  .generique {
+    margin-top: var(--e-7);
+  }
+  .credits {
+    margin: 0;
+    font-size: var(--t-200);
+    letter-spacing: 0.06em;
+  }
+  .credits__ligne {
+    display: grid;
+    grid-template-columns: minmax(10rem, 16rem) minmax(0, 1fr);
+    gap: var(--e-4);
+    padding-block: var(--e-3);
+    border-top: 1px solid var(--filet);
+  }
+  .credits__ligne:last-child {
+    border-bottom: 1px solid var(--filet);
+  }
+  .credits dt {
+    color: var(--texte-doux);
+    text-transform: uppercase;
+  }
+  .credits dd {
+    margin: 0;
+    color: var(--texte);
+    text-transform: uppercase;
+  }
+  .credits :global(mark) {
+    background: none;
+    color: inherit;
+    border-bottom: 2px solid var(--accent);
+  }
+
+  /* --- Les trois sorties ------------------------------------------- */
+  .sorties {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+    gap: var(--e-4);
+    padding-block: var(--e-7);
+  }
+  .sortie {
+    display: flex;
+    flex-direction: column;
+    gap: var(--e-3);
+    justify-content: center;
+    padding: var(--e-5);
+    border: 1px solid var(--filet);
+    color: var(--texte);
+    text-decoration: none;
+    min-height: 9rem;
+  }
+  .sortie--grande {
+    grid-column: span 2;
+    border-color: var(--filet-fort);
+  }
+  .sortie--accent {
+    border-color: var(--reactif);
+    color: var(--reactif);
+  }
+  .sortie:hover,
+  .sortie:focus-visible {
+    border-color: var(--reactif);
+  }
+  .sortie__titre {
+    font-family: var(--display);
+    font-weight: 200;
+    font-size: var(--t-600);
+    line-height: 1.1;
+  }
+  .sortie__titre--petit {
+    font-size: var(--t-500);
+  }
+
+  @media (max-width: 61.99rem) {
+    .planche__grille {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .marge {
+      position: static;
+    }
+    .credits__ligne {
+      grid-template-columns: minmax(0, 1fr);
+      gap: var(--e-1);
+    }
+    .sortie--grande,
+    .galerie__item--large {
+      grid-column: auto;
+    }
+    .bande-meta__case + .bande-meta__case {
+      border-left: 0;
+      padding-left: 0;
+    }
+  }
+</style>

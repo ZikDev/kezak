@@ -1,0 +1,91 @@
+---
+import Admin from '../../../layouts/Admin.astro';
+import { CATEGORIES } from '../../../lib/admin';
+const csrf = Astro.locals.csrf;
+---
+
+<Admin
+  titre="Nouveau projet"
+  sousTitre="Le gabarit défini avec la direction artistique. On remplit, on ne reconstruit pas."
+  parent={{ href: '/admin/projets', libelle: 'Projets' }}
+>
+  <section class="adm__section">
+    <header><h2 class="adm__num">Identité</h2></header>
+    <p class="adm__aide">
+      Le projet est créé en brouillon : rien n'apparaît sur le site tant que vous ne le publiez
+      pas. L'adresse de la page est calculée depuis le titre, et vous pourrez la corriger.
+    </p>
+
+    <form method="post" action="/admin/api/projet">
+      <input type="hidden" name="csrf" value={csrf} />
+
+      <p class="adm__champ">
+        <label for="titre">Titre du projet <span class="adm__requis">obligatoire</span></label>
+        <input type="text" id="titre" name="titre" required autofocus maxlength="160" />
+      </p>
+
+      <div class="adm__duo">
+        <p class="adm__champ">
+          <label for="categorie">Catégorie</label>
+          <select id="categorie" name="categorie">
+            {CATEGORIES.map((c) => (
+              <option value={c.valeur}>{c.libelle}</option>
+            ))}
+          </select>
+        </p>
+        <p class="adm__champ">
+          <label for="categorie_txt">Libellé affiché</label>
+          <input
+            type="text"
+            id="categorie_txt"
+            name="categorie_txt"
+            placeholder="Vidéo · Motion"
+            maxlength="80"
+          />
+        </p>
+        <p class="adm__champ">
+          <label for="annee">Année</label>
+          <input type="text" id="annee" name="annee" placeholder="2026" maxlength="20" />
+        </p>
+      </div>
+
+      <label class="adm__case" for="gabarit">
+        <input type="checkbox" id="gabarit" name="gabarit" value="1" checked />
+        Créer les quatre temps de l'étude de cas et une première ligne de générique
+      </label>
+
+      <div class="adm__actions">
+        <button class="adm__bouton adm__bouton--plein" type="submit">Créer le projet</button>
+        <a class="adm__bouton adm__bouton--discret" href="/admin/projets">Annuler</a>
+      </div>
+    </form>
+  </section>
+
+  <section class="adm__section">
+    <header><h2 class="adm__num">Rappel du gabarit</h2></header>
+    <ol class="gabarit">
+      <li><strong>Héros</strong> — image plein cadre, titre, chapeau</li>
+      <li><strong>Métadonnées</strong> — rôle, réalisation, production, diffusion</li>
+      <li><strong>Vidéo</strong> — identifiant YouTube, chargé seulement au clic</li>
+      <li><strong>Fiche technique</strong> — paires étiquette / valeur, en marge</li>
+      <li><strong>Étude de cas</strong> — contexte, problème, ce que j'ai fait, résultat</li>
+      <li><strong>Citation</strong> — deux lignes du client suffisent</li>
+      <li><strong>Galerie</strong> — images avec légendes</li>
+      <li><strong>Générique</strong> — tous les postes, le vôtre souligné</li>
+    </ol>
+    <p class="adm__aide">
+      Une section laissée vide ne s'affiche pas sur le site : un projet léger reste propre.
+    </p>
+  </section>
+</Admin>
+
+<style>
+  .gabarit {
+    margin: 0;
+    padding-left: 1.3rem;
+    line-height: 2;
+  }
+  .gabarit strong {
+    font-weight: 400;
+  }
+</style>

@@ -1,0 +1,187 @@
+---
+import Admin from '../../layouts/Admin.astro';
+import { db } from '../../lib/db';
+
+const csrf = Astro.locals.csrf;
+const retour = '/admin/medias';
+const medias = db.prepare('SELECT * FROM medias ORDER BY id DESC').all() as any[];
+
+/**
+ * Où chaque média est utilisé.
+ *
+ * La fiche n'affichait que l'identifiant, le type et le poids : on
+ * supprimait sans savoir ce qu'on cassait, et la confirmation disait
+ * « les pages qui l'utilisent l'oublieront » sans dire lesquelles.
+ * Le comptage se fait en trois requêtes pour toute la page, pas trois
+ * par média.
+ */
+const compter = (sql: string): Map<number, number> => {
+  const m = new Map<number, number>();
+  for (const l of db.prepare(sql).all() as { id: number; n: number }[]) {
+    if (l.id) m.set(l.id, (m.get(l.id) ?? 0) + l.n);
+  }
+  return m;
+};
+
+const surAccueil = compter(`
+  SELECT media_id AS id, COUNT(*) AS n FROM accueil_ecrans WHERE media_id IS NOT NULL GROUP BY media_id
+  UNION ALL
+  SELECT video_id AS id, COUNT(*) AS n FROM accueil_ecrans WHERE video_id IS NOT NULL GROUP BY video_id
+`);
+const surProjets = compter(`
+  SELECT hero_id AS id, COUNT(*) AS n FROM projets WHERE hero_id IS NOT NULL GROUP BY hero_id
+  UNION ALL
+  SELECT video_fond_id AS id, COUNT(*) AS n FROM projets WHERE video_fond_id IS NOT NULL GROUP BY video_fond_id
+`);
+const dansGaleries = compter(
+  'SELECT media_id AS id, COUNT(*) AS n FROM projet_medias GROUP BY media_id'
+);
+const portraitId = String(
+  (db.prepare("SELECT valeur FROM reglages WHERE cle = 'portrait_id'").get() as
+    | { valeur: string }
+    | undefined)?.valeur ?? ''
+);
+
+const emplois = (id: number): string[] => {
+  const ou: string[] = [];
+  const a = surAccueil.get(id);
+  if (a) ou.push(`accueil (${a})`);
+  const p = surProjets.get(id);
+  if (p) ou.push(`en-tête de projet (${p})`);
+  const g = dansGaleries.get(id);
+  if (g) ou.push(`galerie de projet (${g})`);
+  if (portraitId === String(id)) ou.push('portrait du Studio');
+  return ou;
+};
+
+const vignette = (m: any) => {
+  try {
+    const v = JSON.parse(m.variantes || '{}');
+    return v.webp400 ? `/media/${v.webp400}` : null;
+  } catch {
+    return null;
+  }
+};
+const poids = (o: number) => (o > 1048576 ? `${(o / 1048576).toFixed(1)} Mo` : `${Math.round(o / 1024)} Ko`);
+---
+
+<Admin titre="Médias" sousTitre="Les images sont traitées en bichromie à l'envoi. Les vidéos sont servies telles quelles.">
+  <section class="adm__section">
+    <header><h2 class="adm__num">Envoyer un fichier</h2></header>
+    <p class="adm__aide">
+      Images : JPEG, PNG, WebP ou AVIF, 15 Mo au maximum. Vidéos de fond : MP4 ou WebM, 60 Mo au
+      maximum — visez trois à six secondes, sans piste audio, entre 1 et 3 Mo. Les vidéos de
+      projet passent par YouTube, depuis la fiche du projet.
+    </p>
+    <form method="post" action="/admin/api/televerser" enctype="multipart/form-data">
+      <input type="hidden" name="csrf" value={csrf} />
+      <input type="hidden" name="retour" value={retour} />
+      <div class="adm__duo">
+        <p class="adm__champ">
+          <label for="fichier">Fichier</label>
+          <input type="file" id="fichier" name="fichier" accept="image/*,video/mp4,video/webm" data-limite-image-mo="15" data-limite-video-mo="60" required />
+        </p>
+        <p class="adm__champ">
+          <label for="alt">Texte alternatif</label>
+          <input type="text" id="alt" name="alt" placeholder="Ce que montre l'image, en une phrase" />
+        </p>
+      </div>
+      <label class="adm__case" for="sans_bichromie">
+        <input type="checkbox" id="sans_bichromie" name="sans_bichromie" value="1" />
+        Garder les couleurs d'origine — à réserver aux logos de clients
+      </label>
+      <div class="adm__actions">
+        <button class="adm__bouton adm__bouton--plein" type="submit">Envoyer</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="adm__section">
+    <header><h2 class="adm__num">{medias.length} média(s)</h2></header>
+    {
+      medias.length === 0 ? (
+        <div class="adm__vide">
+          <p>
+            Aucun média pour l'instant. Envoyez une première image avec le formulaire ci-dessus :
+            elle sera traitée en bichromie et déclinée en quatre tailles.
+          </p>
+        </div>
+      ) : (
+        <div class="adm__vignettes">
+          {medias.map((m) => {
+            const src = vignette(m);
+            const ou = emplois(m.id);
+            return (
+              <article class="adm__vignette">
+                {src ? (
+                  <img src={src} alt={m.alt || ''} width="200" height="150" loading="lazy" />
+                ) : (
+                  <video
+                    src={`/media/${m.fichier}`}
+                    title={`Aperçu de la vidéo ${m.fichier}`}
+                    muted
+                    playsinline
+                    preload="metadata"
+                    controls
+                  />
+                )}
+                <p class="adm__infos">
+                  #{m.id} · {m.type} · {poids(m.octets || 0)}
+                  {m.largeur ? ` · ${m.largeur}×${m.hauteur}` : ''}
+                  {m.type === 'image' && !m.bichromie ? ' · couleurs d’origine' : ''}
+                </p>
+                <p class:list={['adm__infos', 'adm__emplois', ou.length === 0 && 'adm__emplois--libre']}>
+                  {ou.length > 0 ? `Utilisé : ${ou.join(', ')}` : "Utilisé nulle part"}
+                </p>
+                <form method="post" action="/admin/api/enregistrer">
+                  <input type="hidden" name="csrf" value={csrf} />
+                  <input type="hidden" name="table" value="medias" />
+                  <input type="hidden" name="id" value={m.id} />
+                  <input type="hidden" name="retour" value={retour} />
+                  <p class="adm__champ">
+                    <label for={`alt${m.id}`}>Texte alternatif</label>
+                    <input type="text" id={`alt${m.id}`} name="c_alt" value={m.alt} />
+                  </p>
+                  <div class="adm__actions">
+                    <button class="adm__bouton adm__bouton--plein" type="submit">Enregistrer</button>
+                  </div>
+                </form>
+                <form method="post" action="/admin/api/media">
+                  <input type="hidden" name="csrf" value={csrf} />
+                  <input type="hidden" name="id" value={m.id} />
+                  <input type="hidden" name="retour" value={retour} />
+                  <div class="adm__actions supprimer">
+                    <button
+                      class="adm__bouton adm__bouton--danger"
+                      name="action"
+                      value="supprimer"
+                      data-confirmer={
+                        ou.length > 0
+                          ? `Supprimer ce média ? Il est utilisé — ${ou.join(', ')} — et ces emplacements deviendront vides. C'est définitif.`
+                          : "Supprimer ce média et tous ses fichiers ? C'est définitif."
+                      }
+                    >
+                      Supprimer
+                    </button>
+                  </div>
+                </form>
+              </article>
+            );
+          })}
+        </div>
+      )
+    }
+  </section>
+</Admin>
+
+<style>
+  .adm__vignette video {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+    background: var(--abysse);
+  }
+  .supprimer {
+    padding: 0 0.7rem 0.7rem;
+  }
+</style>

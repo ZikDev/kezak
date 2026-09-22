@@ -1,0 +1,29 @@
+---
+/**
+ * Le grain : un filtre SVG, jamais une image. Il ne pèse rien, se
+ * redimensionne à l'infini et se règle d'une seule valeur.
+ */
+interface Props {
+  id: string;
+  opacite?: number;
+  frequence?: number;
+}
+const { id, opacite = 0.3, frequence = 0.85 } = Astro.props;
+---
+
+<svg class="grain" aria-hidden="true" focusable="false" style={`opacity:${opacite}`}>
+  <defs>
+    <filter id={`grain-${id}`}>
+      <feTurbulence type="fractalNoise" baseFrequency={frequence} numOctaves="3" stitchTiles="stitch" />
+      <feColorMatrix type="saturate" values="0" />
+    </filter>
+  </defs>
+  <rect width="100%" height="100%" filter={`url(#grain-${id})`}></rect>
+</svg>
+
+<style>
+  .grain {
+    width: 100%;
+    height: 100%;
+  }
+</style>

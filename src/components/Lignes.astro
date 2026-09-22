@@ -1,0 +1,22 @@
+---
+/**
+ * Affiche un texte en respectant ses retours à la ligne.
+ *
+ * On passe par ce composant plutôt que par un remplacement vers « <br> »
+ * injecté en HTML : le contenu vient de la base, et rien de ce qui vient de
+ * la base ne doit être interprété comme du balisage.
+ */
+interface Props {
+  texte?: string | null;
+}
+const lignes = String(Astro.props.texte ?? '').split('\n');
+---
+
+{
+  lignes.map((ligne, i) => (
+    <Fragment>
+      {i > 0 && <br />}
+      {ligne}
+    </Fragment>
+  ))
+}

@@ -1,0 +1,79 @@
+---
+import '../styles/tokens.css';
+import '../styles/base.css';
+// Chargée ici seulement : l'administration ne doit pas hériter des
+// transitions de page du site public.
+import '../styles/transitions.css';
+import Bandeau from '../components/Bandeau.astro';
+import PiedDePage from '../components/PiedDePage.astro';
+import { tousReglages } from '../lib/db';
+
+interface Props {
+  titre: string;
+  description?: string;
+  /** L'accueil masque le bandeau sur le premier écran. */
+  bandeauDifferre?: boolean;
+  actif?: 'projets' | 'studio' | 'contact' | null;
+  image?: string;
+}
+
+const { titre, description = '', bandeauDifferre = false, actif = null, image } = Astro.props;
+const r = tousReglages();
+const site = r.site_nom || 'Kezak';
+const titreComplet = titre === site ? site : `${titre} — ${site}`;
+const desc = description || r.seo_description || '';
+const url = Astro.url.href;
+---
+
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{titreComplet}</title>
+    {desc && <meta name="description" content={desc} />}
+    <link rel="canonical" href={url} />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={titreComplet} />
+    {desc && <meta property="og:description" content={desc} />}
+    <meta property="og:url" content={url} />
+    <meta property="og:locale" content="fr_CH" />
+    {image && <meta property="og:image" content={new URL(image, Astro.url).href} />}
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="theme-color" content="#0a1428" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link
+      rel="preload"
+      href="/fonts/Lineal-Thin.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link
+      rel="preload"
+      href="/fonts/Spectral-Light.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    {/*
+      Dit au navigateur de ne rien peindre avant que #contenu existe.
+      Pendant une transition entre deux pages, c'est ce qui la fait durer
+      exactement le temps du chargement : l'image de la page quittée reste
+      à l'écran jusqu'à ce que la suivante soit prête, au lieu d'un blanc
+      puis d'un saut. Les navigateurs qui ne connaissent pas cette valeur
+      l'ignorent : rien ne change pour eux.
+    */}
+    <link rel="expect" href="#contenu" blocking="render" />
+    <script src="/js/site.js" defer is:inline></script>
+  </head>
+  <body>
+    <a class="evitement" href="#contenu">Aller au contenu</a>
+    <div class="fil" aria-hidden="true"></div>
+    <Bandeau differe={bandeauDifferre} actif={actif} />
+    <main id="contenu">
+      <slot />
+    </main>
+    <PiedDePage />
+  </body>
+</html>

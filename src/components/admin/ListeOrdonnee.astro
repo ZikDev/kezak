@@ -1,0 +1,176 @@
+---
+/**
+ * Une liste de lignes réordonnables — c'est le motif de toute l'admin.
+ * Tout ce qui apparaît en série sur le site (sections, faits, crédits,
+ * prestations, questions…) est édité par ce composant.
+ */
+interface Champ {
+  nom: string;
+  libelle: string;
+  type?: 'texte' | 'zone' | 'case';
+  lignes?: number;
+}
+
+interface Props {
+  table: string;
+  lignes: Record<string, any>[];
+  champs: Champ[];
+  retour: string;
+  projetId?: number | null;
+  libelleAjout?: string;
+  /** Faux quand les lignes ne peuvent pas être créées vides (la galerie :
+      une ligne sans média violerait la contrainte NOT NULL). */
+  ajout?: boolean;
+  etiquette?: (ligne: Record<string, any>, index: number) => string;
+}
+
+const {
+  table,
+  lignes,
+  champs,
+  retour,
+  projetId = null,
+  libelleAjout = 'Ajouter une ligne',
+  ajout = true,
+  etiquette,
+} = Astro.props;
+const csrf = Astro.locals.csrf;
+---
+
+<div class="liste">
+  {
+    lignes.map((l, i) => {
+      // Le nom de la ligne sert aussi aux lecteurs d'écran : « Monter »
+      // répété douze fois dans une même section ne dit rien de ce qu'on
+      // déplace.
+      const nom = etiquette ? etiquette(l, i) : `ligne ${String(i + 1).padStart(2, '0')}`;
+      return (
+      <article class="adm__ligne">
+        <header>
+          <span class="adm__poignee">
+            {etiquette ? etiquette(l, i) : `${String(i + 1).padStart(2, '0')}`}
+          </span>
+          <span class="adm__outils">
+            <form method="post" action="/admin/api/ligne">
+              <input type="hidden" name="csrf" value={csrf} />
+              <input type="hidden" name="table" value={table} />
+              <input type="hidden" name="id" value={l.id} />
+              <input type="hidden" name="retour" value={retour} />
+              {projetId && <input type="hidden" name="projet_id" value={projetId} />}
+              <button
+                class="adm__bouton adm__bouton--discret"
+                name="action"
+                value="monter"
+                disabled={i === 0}
+                aria-label={`Monter ${nom}`}
+                title="Monter"
+              >
+                ↑
+              </button>
+              <button
+                class="adm__bouton adm__bouton--discret"
+                name="action"
+                value="descendre"
+                disabled={i === lignes.length - 1}
+                aria-label={`Descendre ${nom}`}
+                title="Descendre"
+              >
+                ↓
+              </button>
+              <button
+                class="adm__bouton adm__bouton--danger"
+                name="action"
+                value="supprimer"
+                data-confirmer={`Supprimer « ${nom} » ? C'est définitif.`}
+              >
+                Supprimer<span class="visuellement-cache"> {nom}</span>
+              </button>
+            </form>
+          </span>
+        </header>
+
+        <form method="post" action="/admin/api/enregistrer">
+          <input type="hidden" name="csrf" value={csrf} />
+          <input type="hidden" name="table" value={table} />
+          <input type="hidden" name="id" value={l.id} />
+          <input type="hidden" name="retour" value={retour} />
+
+          {champs.map((c) =>
+            c.type === 'case' ? (
+              <label class="adm__case" for={`${table}-${l.id}-${c.nom}`}>
+                <input type="hidden" name={`b_${c.nom}`} value="1" />
+                <input
+                  type="checkbox"
+                  id={`${table}-${l.id}-${c.nom}`}
+                  name={`c_${c.nom}`}
+                  value="1"
+                  checked={!!l[c.nom]}
+                />
+                {c.libelle}
+              </label>
+            ) : c.type === 'zone' ? (
+              <p class="adm__champ">
+                <label for={`${table}-${l.id}-${c.nom}`}>{c.libelle}</label>
+                <textarea
+                  id={`${table}-${l.id}-${c.nom}`}
+                  name={`c_${c.nom}`}
+                  rows={c.lignes ?? 5}
+                  set:text={l[c.nom] ?? ''}
+                />
+              </p>
+            ) : (
+              <p class="adm__champ">
+                <label for={`${table}-${l.id}-${c.nom}`}>{c.libelle}</label>
+                <input
+                  type="text"
+                  id={`${table}-${l.id}-${c.nom}`}
+                  name={`c_${c.nom}`}
+                  value={l[c.nom] ?? ''}
+                />
+              </p>
+            )
+          )}
+
+          <div class="adm__actions">
+            <button class="adm__bouton adm__bouton--plein" type="submit">Enregistrer</button>
+          </div>
+        </form>
+      </article>
+      );
+    })
+  }
+
+  {
+    ajout && lignes.length === 0 && (
+      <div class="adm__vide">
+        <p>
+          Rien ici pour l'instant. La ligne est créée vide : vous la remplissez ensuite, et elle
+          n'apparaît sur le site que lorsqu'elle a du contenu.
+        </p>
+      </div>
+    )
+  }
+
+  {ajout && (
+  <form method="post" action="/admin/api/ligne" class="liste__ajout">
+    <input type="hidden" name="csrf" value={csrf} />
+    <input type="hidden" name="table" value={table} />
+    <input type="hidden" name="action" value="ajouter" />
+    <input type="hidden" name="retour" value={retour} />
+    {projetId && <input type="hidden" name="projet_id" value={projetId} />}
+    <button class="adm__bouton" type="submit">+ {libelleAjout}</button>
+  </form>
+  )}
+
+  {!ajout && lignes.length === 0 && (
+    <div class="adm__vide">
+      <p>Rien ici pour l'instant — utilisez le formulaire d'envoi ci-dessus.</p>
+    </div>
+  )}
+</div>
+
+<style>
+  .liste__ajout {
+    margin-top: var(--e-3);
+  }
+</style>
