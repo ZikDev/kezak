@@ -201,8 +201,9 @@ npm run verif
 
 Contrôle en une seconde : imports cassés, formulaire sans jeton anti-CSRF,
 route d'admin sans contrôle de session, redirection non filtrée, couleur
-hors de la palette, police manquante. **Lancez-la avant chaque mise en
-ligne.**
+hors de la palette, police manquante, désaccord entre les deux listes
+blanches d'écriture, colonne-adresse qui échappe au filtre des liens.
+**Lancez-la avant chaque mise en ligne.**
 
 ```bash
 npm run build && npm start
@@ -406,6 +407,35 @@ passent sous l'image, de part et d'autre du numéro de vue.
 > l'original n'existe plus. Pour la remettre en couleur, supprimez la vue et
 > **téléversez à nouveau le fichier** depuis cette section.
 
+## Les liens d'un projet
+
+Section **06** de la fiche projet, affichée juste avant la galerie. Chaque
+lien est une carte : un intitulé, le domaine où il mène, une précision
+facultative.
+
+Trois formes d'adresse sont acceptées :
+
+| Ce qu'on colle | Ce que ça donne |
+| --- | --- |
+| `https://mcf-fribourg.ch/expo` | un lien externe, ouvert dans un nouvel onglet |
+| `mcf-fribourg.ch` | le `https://` est ajouté |
+| `/projets/mon-projet` | une autre page du site, ouverte dans le même onglet |
+| `mailto:nom@exemple.ch` | une adresse de courriel |
+
+Tout le reste est refusé, et l'enregistrement s'arrête avec un message :
+rien n'est écrit, votre saisie est encore dans la page. C'est volontaire —
+une adresse est la seule chose qu'un visiteur suit sans la lire.
+
+## Les crédits
+
+Section **08**. Qui a fait quoi : générique d'un film, colophon d'une
+publication, équipe d'un site. Cochez « c'est moi » pour souligner votre
+nom, et ajoutez une adresse pour que le nom renvoie vers le portfolio de
+la personne.
+
+La phrase affichée en marge se règle une fois pour toutes dans
+**Projets → 01 — Mention en marge des crédits**.
+
 ## Changer le mot de passe
 
 Il n'existe aucune page de réinitialisation, et c'est voulu : rien à
@@ -462,6 +492,9 @@ demandé moins d'animations ou active l'économie de données.
 | « Ce lien YouTube n'est pas reconnu » | l'adresse ne vient pas de YouTube, ou elle a été raccourcie par un autre service. Ouvrez la vidéo sur YouTube et recopiez la barre d'adresse |
 | Les flèches du carrousel n'apparaissent pas | `/js/site.js` ne s'est pas chargé — la galerie reste défilante au doigt, à la molette et au clavier |
 | Une image de galerie est en noir et blanc | elle a été envoyée avant la version 6, ou reprise depuis la médiathèque. Renvoyez le fichier depuis la section galerie |
+| « Cette adresse n'a pas été acceptée » | l'adresse ne commence ni par `https://`, ni par `mailto:`, ni par une barre oblique. Rien n'a été enregistré : corrigez le champ et renvoyez |
+| « Cette rubrique n'est pas modifiable » | une table manque dans l'une des deux listes blanches (`CHAMPS` dans `src/lib/admin.ts`, `TABLES_ADMIN` dans `src/lib/db.ts`). `npm run verif` le dit maintenant |
+| `database is locked` dans un script | un autre processus écrivait au même instant ; les scripts attendent cinq secondes, relancez |
 
 ---
 
@@ -506,7 +539,8 @@ src/
                     Grain, Lignes
   layouts/          Base (site), Admin (back-office)
   lib/              db, auth, media, admin, motdepasse, schema, env,
-                    migrations (transforme une base déjà remplie)
+                    migrations (transforme une base déjà remplie),
+                    textes (les textes par défaut, en un seul endroit)
   styles/           tokens.css (la direction artistique), base.css,
                     transitions.css (le passage d'une page à l'autre), admin.css
 scripts/            migrate, seed, creer-compte, sauvegarde, verif, polices
@@ -528,7 +562,9 @@ des données. Les changements de forme passent donc par
 
 Ce qu'il faut en savoir :
 
-- elles s'exécutent **au démarrage du serveur**, avant la première requête ;
+- elles s'exécutent **au démarrage du serveur**, avant la première requête,
+  et aussi à l'ouverture de la base par un script (`npm run migrate`,
+  `seed`, `compte`, `sauvegarde`) — les deux chemins sont les mêmes ;
 - l'état est tenu par `PRAGMA user_version` dans la base elle-même, lu et
   écrit dans la même transaction que le travail — deux processus qui
   démarrent ensemble ne peuvent pas migrer deux fois ;
@@ -541,6 +577,13 @@ Ce qu'il faut en savoir :
 
 En clair : rien à taper. Mais **sauvegardez avant** (`npm run sauvegarde`)
 — c'est le seul moment où le fichier de base est réécrit.
+
+Les migrations livrées à ce jour :
+
+| N° | Version | Ce qu'elle fait |
+| --- | --- | --- |
+| 1 | 6 | la galerie accepte les vidéos YouTube (`media_id` devient facultatif) |
+| 2 | 6.2 | un lien par ligne de crédits, et la mention en marge passe de `generique_note` à `credits_note` |
 
 ---
 

@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
 import { db, insererLigne, prochainePosition } from '../../../lib/db';
-import { cheminInterne, ancreSure, retourVers, nettoyer } from '../../../lib/admin';
+import { cheminInterne, ancreSure, retourVers, nettoyer, identifiantYoutube } from '../../../lib/admin';
 
 export const prerender = false;
 
@@ -15,40 +15,6 @@ export const prerender = false;
  * On accepte l'adresse complète autant que l'identifiant seul : personne
  * ne copie un identifiant YouTube à la main, on copie la barre d'adresse.
  */
-const MOTIF_YOUTUBE = /(?:v=|youtu\.be\/|embed\/|shorts\/|live\/)([A-Za-z0-9_-]{6,20})/;
-
-/** Les hôtes qui servent vraiment des vidéos YouTube. */
-const HOTES_YOUTUBE = new Set([
-  'youtube.com',
-  'www.youtube.com',
-  'm.youtube.com',
-  'music.youtube.com',
-  'youtube-nocookie.com',
-  'www.youtube-nocookie.com',
-  'youtu.be',
-]);
-
-function identifiantYoutube(brut: string): string {
-  const v = brut.trim();
-  // Un identifiant collé seul reste accepté.
-  if (/^[A-Za-z0-9_-]{6,20}$/.test(v)) return v;
-  // Sinon il faut une adresse, et une adresse de YouTube. Le motif seul
-  // acceptait n'importe quel site contenant « v= » : l'identifiant extrait
-  // était inoffensif, mais on croyait avoir collé un lien YouTube et la
-  // vue s'affichait vide.
-  try {
-    const u = new URL(v);
-    if (!HOTES_YOUTUBE.has(u.hostname.toLowerCase())) return '';
-    const m = MOTIF_YOUTUBE.exec(u.href);
-    if (m) return m[1];
-    // « youtu.be/ID » : l'identifiant est le chemin.
-    const chemin = u.pathname.replace(/^\//, '');
-    return /^[A-Za-z0-9_-]{6,20}$/.test(chemin) ? chemin : '';
-  } catch {
-    return '';
-  }
-}
-
 export const POST: APIRoute = async ({ request, redirect, locals }) => {
   if (!locals.utilisateur) return new Response('Non authentifié', { status: 401 });
 

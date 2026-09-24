@@ -43,7 +43,8 @@ export const CHAMPS: Record<string, string[]> = {
   ],
   projet_sections: ['titre', 'corps'],
   projet_faits: ['etiquette', 'valeur'],
-  projet_credits: ['poste', 'noms', 'cest_moi'],
+  projet_credits: ['poste', 'noms', 'cest_moi', 'url'],
+  projet_liens: ['libelle', 'url', 'note'],
   projet_medias: ['legende', 'large', 'media_id'],
   // « youtube » n'est volontairement pas ici : sa valeur est validée par
   // la route dédiée, pas reprise telle quelle depuis un formulaire.
@@ -54,6 +55,27 @@ export const CHAMPS: Record<string, string[]> = {
   etapes_contact: ['texte'],
   medias: ['alt', 'legende'],
 };
+
+/**
+ * Colonnes qui contiennent une adresse, et qui finiront donc dans un
+ * attribut « href ».
+ *
+ * Elles sont traitées à part parce qu'un lien n'est pas du texte : une
+ * valeur commençant par « javascript: » devient du code exécuté au clic,
+ * sur le domaine du site, avec la session de qui clique. L'échappement
+ * HTML n'y change rien — il protège la structure de la page, pas le
+ * schéma d'une URL.
+ */
+const LIENS = new Set(['url', 'lien_url']);
+
+/**
+ * Les réglages qui sont des adresses. Même raison que ci-dessus, et le
+ * même oubli : les trois liens de réseaux sociaux étaient enregistrés par
+ * la fonction de nettoyage ordinaire, celle qui ne regarde pas le schéma.
+ * Ils finissent pourtant dans un « href », en pied de page de TOUTES les
+ * pages du site.
+ */
+export const REGLAGES_LIENS = new Set(['reseau_instagram', 'reseau_linkedin', 'reseau_behance']);
 
 /** Colonnes numériques : converties, et vidées vers NULL si le champ est vide. */
 const NUMERIQUES = new Set([
@@ -97,7 +119,10 @@ export const REGLAGES_AUTORISES = new Set([
   'contact_description',
   'contact_lieu',
   'contact_agences',
-  'generique_note',
+  // Anciennement « generique_note » : la section s'appelle « Crédits »,
+  // parce qu'un projet web ou photo n'a pas de générique. La migration 2
+  // déplace la valeur enregistrée sous l'ancien nom.
+  'credits_note',
   'portrait_id',
 ]);
 
@@ -112,6 +137,8 @@ export function champsAutorises(table: string, data: FormData): Record<string, a
     if (NUMERIQUES.has(col)) {
       const s = String(brut ?? '').trim();
       sortie[col] = s === '' ? null : Number(s) || 0;
+    } else if (LIENS.has(col)) {
+      sortie[col] = lienSur(brut);
     } else {
       sortie[col] = nettoyer(brut, col === 'corps' || col === 'reponse' || col === 'texte' ? 8000 : 2000);
     }
@@ -143,6 +170,78 @@ export function nettoyer(v: unknown, max = 2000): string {
  */
 export function nettoyerLigne(v: unknown, max = 200): string {
   return nettoyer(v, max).replace(/[\r\n\t]+/g, ' ').replace(/ {2,}/g, ' ').trim();
+}
+
+/**
+ * Une adresse destinée à un attribut « href », ou rien.
+ *
+ * Trois schémas sont acceptés — http, https, mailto — et un chemin interne
+ * commençant par une seule barre oblique. Tout le reste renvoie une chaîne
+ * vide : « javascript: », « data: », « vbscript: », et les variantes
+ * qu'on obtient en glissant une tabulation ou un caractère de contrôle au
+ * milieu du mot (« java\tscript: »), que le navigateur ignore et que le
+ * schéma retrouve intact. C'est pourquoi le nettoyage a lieu AVANT
+ * l'analyse, et que le verdict est rendu par `new URL()` plutôt que par
+ * une expression régulière écrite à la main.
+ *
+ * Une adresse sans schéma (« kezak.ch ») reçoit « https:// » : c'est ce
+ * qu'on colle naturellement, et le refuser sans un mot serait obscur.
+ */
+const SCHEMAS_SURS = new Set(['http:', 'https:', 'mailto:']);
+
+export function lienSur(valeur: unknown, max = 600): string {
+  const v = nettoyerLigne(valeur, max);
+  if (!v) return '';
+  // Chemin interne : une seule barre, et rien qui ressemble à un protocole.
+  if (v.startsWith('/')) return cheminInterne(v, '');
+  const candidat = /^[A-Za-z][A-Za-z0-9+.-]*:/.test(v) ? v : `https://${v}`;
+  try {
+    const u = new URL(candidat);
+    if (!SCHEMAS_SURS.has(u.protocol)) return '';
+    // Un hôte vide (« http:///chemin ») ne mène nulle part.
+    if (u.protocol !== 'mailto:' && !u.hostname) return '';
+    return u.href.slice(0, max);
+  } catch {
+    return '';
+  }
+}
+
+/**
+ * L'identifiant d'une vidéo YouTube, à partir de ce qu'on a collé.
+ *
+ * Écrit ici, et non dans une route, parce qu'il y a deux endroits où l'on
+ * colle une adresse YouTube — la vidéo d'en-tête d'un projet et une vue de
+ * galerie — et qu'ils ne partageaient rien : le second contrôlait l'hôte,
+ * le premier se contentait de chercher « v= » n'importe où. Une règle de
+ * sécurité écrite deux fois est une règle appliquée une fois et demie.
+ */
+const MOTIF_YOUTUBE = /(?:v=|youtu\.be\/|embed\/|shorts\/|live\/)([A-Za-z0-9_-]{6,20})/;
+
+const HOTES_YOUTUBE = new Set([
+  'youtube.com',
+  'www.youtube.com',
+  'm.youtube.com',
+  'music.youtube.com',
+  'youtube-nocookie.com',
+  'www.youtube-nocookie.com',
+  'youtu.be',
+]);
+
+export function identifiantYoutube(brut: unknown): string {
+  const v = nettoyerLigne(brut, 600);
+  if (!v) return '';
+  if (/^[A-Za-z0-9_-]{6,20}$/.test(v)) return v;
+  try {
+    const u = new URL(/^[A-Za-z][A-Za-z0-9+.-]*:/.test(v) ? v : `https://${v}`);
+    if (!HOTES_YOUTUBE.has(u.hostname.toLowerCase())) return '';
+    const m = MOTIF_YOUTUBE.exec(u.href);
+    if (m) return m[1];
+    // « youtu.be/ID » : l'identifiant est le chemin.
+    const chemin = u.pathname.replace(/^\//, '');
+    return /^[A-Za-z0-9_-]{6,20}$/.test(chemin) ? chemin : '';
+  } catch {
+    return '';
+  }
 }
 
 /**
@@ -224,6 +323,7 @@ export const MESSAGES: Record<string, string> = {
   lourd: 'Fichier trop lourd. Limite : 15 Mo pour une image, 60 Mo pour une vidéo.',
   media: "Le fichier n'a pas pu être traité. Essayez un autre format.",
   youtube: "Ce lien YouTube n'est pas reconnu. Collez l'adresse complète de la vidéo.",
+  lien: "Cette adresse n'a pas été acceptée : rien n'a été enregistré. Une adresse commence par « https:// », « mailto: » ou une barre oblique pour une page du site.",
   echec: "L'enregistrement a échoué. Le détail est dans le journal du serveur.",
 };
 

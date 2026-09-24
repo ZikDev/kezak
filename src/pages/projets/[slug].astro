@@ -9,11 +9,14 @@ import {
   sectionsDuProjet,
   faitsDuProjet,
   creditsDuProjet,
+  liensDuProjet,
   mediasDuProjet,
   projetSuivant,
   media,
   tousReglages,
 } from '../../lib/db';
+import { lienSur } from '../../lib/admin';
+import { NOTE_CREDITS } from '../../lib/textes.mjs';
 
 const { slug } = Astro.params;
 const projet = projetParSlug(String(slug));
@@ -32,6 +35,34 @@ const credits = creditsDuProjet(projet.id);
 const galerie = mediasDuProjet(projet.id);
 const suivant = projetSuivant(projet);
 const hero = media(projet.hero_id);
+
+/**
+ * Les adresses sont repassées au filtre AU MOMENT DE L'AFFICHAGE, et pas
+ * seulement à l'enregistrement.
+ *
+ * Ce n'est pas de la défiance envers l'administration : c'est que le
+ * filtre d'écriture a été ajouté après coup, et qu'une base peut contenir
+ * des lignes plus anciennes que lui. Une vérification à l'écriture protège
+ * ce qui a été écrit depuis ; une vérification à l'affichage protège la
+ * page, ce qui est la seule chose qui compte pour le visiteur.
+ */
+const liens = liensDuProjet(projet.id)
+  .map((l) => ({ ...l, url: lienSur(l.url) }))
+  .filter((l) => l.url && l.libelle);
+
+/** Ce qu'on montre à côté du libellé : le domaine, ou le chemin. */
+function ouCaMene(url: string): string {
+  if (url.startsWith('/')) return url;
+  if (url.startsWith('mailto:')) return url.slice(7);
+  try {
+    return new URL(url).hostname.replace(/^www\./, '');
+  } catch {
+    return '';
+  }
+}
+const externe = (url: string) => /^https?:/i.test(url);
+
+const lesCredits = credits.map((c) => ({ ...c, url: lienSur(c.url) }));
 
 const metas = [
   ['Mon rôle', projet.role],
@@ -140,6 +171,38 @@ const metas = [
       </div>
 
       {
+        liens.length > 0 && (
+          <div class="contenu contenu--planche liens">
+            <p class="etiquette etiquette--accent">Liens</p>
+            <ul class="liens__liste">
+              {liens.map((l) => (
+                <li>
+                  <a
+                    class="lien"
+                    href={l.url}
+                    target={externe(l.url) ? '_blank' : undefined}
+                    rel={externe(l.url) ? 'noopener' : undefined}
+                  >
+                    <span class="lien__libelle">
+                      {l.libelle}
+                      {externe(l.url) && (
+                        <span class="lien__fleche" aria-hidden="true">
+                          ↗
+                        </span>
+                      )}
+                    </span>
+                    <span class="mono lien__ou">{ouCaMene(l.url)}</span>
+                    {l.note && <span class="lien__note">{l.note}</span>}
+                    {externe(l.url) && <span class="visuellement-cache">(nouvel onglet)</span>}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )
+      }
+
+      {
         galerie.length > 0 && (
           <div class="contenu galerie">
             <Carrousel entrees={galerie} titre={projet.titre} />
@@ -148,23 +211,42 @@ const metas = [
       }
 
       {
-        credits.length > 0 && (
-          <div class="contenu contenu--planche planche__grille generique">
+        lesCredits.length > 0 && (
+          <div class="contenu contenu--planche planche__grille bloc-credits">
             <aside class="marge">
-              <p class="etiquette etiquette--accent">Générique</p>
+              <p class="etiquette etiquette--accent">Crédits</p>
               <hr class="filet" />
-              <p class="marge__note">
-                {r.generique_note ||
-                  "Extrait du générique du film, tel qu'il y figure. Les postes que je n'ai pas tenus sont nommés aussi : c'est ce qui rend le mien crédible."}
-              </p>
+              <p class="marge__note">{r.credits_note || NOTE_CREDITS}</p>
             </aside>
             <dl class="credits mono">
-              {credits.map((c) => (
-                <div class="credits__ligne">
-                  <dt>{c.poste}</dt>
-                  <dd>{c.cest_moi ? <mark>{c.noms}</mark> : c.noms}</dd>
-                </div>
-              ))}
+              {lesCredits.map((c) => {
+                const nom = c.cest_moi ? <mark>{c.noms}</mark> : c.noms;
+                return (
+                  <div class="credits__ligne">
+                    <dt>{c.poste}</dt>
+                    <dd>
+                      {c.url ? (
+                        <a
+                          class="credits__lien"
+                          href={c.url}
+                          target={externe(c.url) ? '_blank' : undefined}
+                          rel={externe(c.url) ? 'noopener' : undefined}
+                        >
+                          {nom}
+                          {externe(c.url) && (
+                            <span class="lien__fleche" aria-hidden="true">
+                              ↗
+                            </span>
+                          )}
+                          {externe(c.url) && <span class="visuellement-cache">(nouvel onglet)</span>}
+                        </a>
+                      ) : (
+                        nom
+                      )}
+                    </dd>
+                  </div>
+                );
+              })}
             </dl>
           </div>
         )
@@ -394,6 +476,59 @@ const metas = [
     color: var(--texte-doux);
   }
 
+  /* --- Les liens ---------------------------------------------------- */
+  .liens {
+    margin-top: var(--e-7);
+    display: flex;
+    flex-direction: column;
+    gap: var(--e-4);
+  }
+  .liens__liste {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    /* « min(100%, …) » : sans lui, une colonne de 18 rem reste large de
+       18 rem sur un écran de 320 px, et la grille déborde. */
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+    gap: var(--e-4);
+  }
+  .lien {
+    display: flex;
+    flex-direction: column;
+    gap: var(--e-2);
+    height: 100%;
+    padding: var(--e-4);
+    border: 1px solid var(--filet);
+    color: var(--texte);
+    text-decoration: none;
+  }
+  .lien:hover,
+  .lien:focus-visible {
+    border-color: var(--accent);
+  }
+  .lien__libelle {
+    font-family: var(--display);
+    font-weight: 300;
+    font-size: var(--t-400);
+    line-height: var(--interligne-titre);
+    /* Une adresse collée dans le libellé ne doit pas élargir la carte. */
+    overflow-wrap: anywhere;
+  }
+  .lien__fleche {
+    margin-left: 0.35em;
+    color: var(--accent);
+  }
+  .lien__ou {
+    color: var(--texte-doux);
+    font-size: var(--t-100);
+    overflow-wrap: anywhere;
+  }
+  .lien__note {
+    color: var(--texte-doux);
+    font-size: var(--t-200);
+  }
+
   /* La galerie est le seul bloc de la planche qui garde toute la largeur,
      et c'est volontaire : ses deux flèches se tiennent aux bords de la
      page, l'image respire entre elles. Le composant porte sa propre mise
@@ -402,7 +537,7 @@ const metas = [
     margin-top: var(--e-7);
   }
 
-  .generique {
+  .bloc-credits {
     margin-top: var(--e-7);
   }
   .credits {
@@ -428,11 +563,26 @@ const metas = [
     margin: 0;
     color: var(--texte);
     text-transform: uppercase;
+    /* Un nom sans espace — un pseudonyme, un studio — ne doit pas pousser
+       la colonne hors de l'écran sur un téléphone. */
+    overflow-wrap: anywhere;
   }
   .credits :global(mark) {
     background: none;
     color: inherit;
     border-bottom: 2px solid var(--accent);
+  }
+  /* Le lien d'un nom crédité. Souligné au survol seulement : une colonne
+     de noms tous soulignés se lit comme une liste de boutons. */
+  .credits__lien {
+    color: inherit;
+    text-decoration: none;
+    border-bottom: 1px solid var(--filet-fort);
+  }
+  .credits__lien:hover,
+  .credits__lien:focus-visible {
+    border-bottom-color: var(--accent);
+    color: var(--accent);
   }
 
   /* --- Les trois sorties ------------------------------------------- */

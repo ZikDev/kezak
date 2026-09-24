@@ -8,6 +8,7 @@ import {
   sectionsDuProjet,
   faitsDuProjet,
   creditsDuProjet,
+  liensDuProjet,
   mediasDuProjet,
 } from '../../../lib/db';
 import { CATEGORIES } from '../../../lib/admin';
@@ -21,6 +22,7 @@ const retour = `/admin/projets/${id}`;
 const sections = sectionsDuProjet(id);
 const faits = faitsDuProjet(id);
 const credits = creditsDuProjet(id);
+const liens = liensDuProjet(id);
 const galerie = mediasDuProjet(id);
 const images = db
   .prepare("SELECT id, type, alt, fichier, variantes FROM medias WHERE type = 'image' ORDER BY id DESC")
@@ -299,9 +301,37 @@ const vignette = (m: any) => {
     </form>
   </section>
 
-  <!-- 06 — Galerie ---------------------------------------------------------- -->
+  <!-- 06 — Liens ------------------------------------------------------------ -->
   <section class="adm__section">
-    <header><h2 class="adm__num">06 — Galerie</h2></header>
+    <header><h2 class="adm__num">06 — Liens</h2></header>
+    <p class="adm__aide">
+      Les adresses utiles du projet : le site livré, un article, une fiche, une boutique. Elles
+      s'affichent juste avant la galerie, sous forme de cartes. Une ligne sans adresse ou sans
+      intitulé n'apparaît pas sur le site.
+    </p>
+    <ListeOrdonnee
+      table="projet_liens"
+      lignes={liens}
+      projetId={id}
+      retour={retour}
+      libelleAjout="Ajouter un lien"
+      etiquette={(l, i) => `Lien ${String(i + 1).padStart(2, '0')}${l.libelle ? ` — ${l.libelle}` : ''}`}
+      champs={[
+        { nom: 'libelle', libelle: "Intitulé — ce qu'on lit sur la carte" },
+        {
+          nom: 'url',
+          libelle: 'Adresse',
+          type: 'lien',
+          aide: "Collez l'adresse complète. Une page de ce site s'écrit « /projets/mon-projet ». Une adresse de courriel s'écrit « mailto:nom@exemple.ch ».",
+        },
+        { nom: 'note', libelle: 'Précision — facultative' },
+      ]}
+    />
+  </section>
+
+  <!-- 07 — Galerie ---------------------------------------------------------- -->
+  <section class="adm__section">
+    <header><h2 class="adm__num">07 — Galerie</h2></header>
     <p class="adm__aide">
       Sur le site, la galerie se parcourt vue par vue, avec des flèches. Chaque vue est montrée
       en entier, jamais rognée — une affiche verticale reste lisible. Les images de la galerie
@@ -447,22 +477,31 @@ const vignette = (m: any) => {
     />
   </section>
 
-  <!-- 07 — Générique -------------------------------------------------------- -->
+  <!-- 08 — Crédits ---------------------------------------------------------- -->
   <section class="adm__section">
-    <header><h2 class="adm__num">07 — Générique</h2></header>
+    <header><h2 class="adm__num">08 — Crédits</h2></header>
     <p class="adm__aide">
-      Nommez aussi les postes que vous n'avez pas tenus : c'est ce qui rend le vôtre crédible.
-      Cochez « c'est moi » pour souligner votre nom.
+      Qui a fait quoi — générique d'un film, colophon d'une publication, équipe d'un site. Nommez
+      aussi les rôles que vous n'avez pas tenus : c'est ce qui rend le vôtre crédible. Cochez
+      « c'est moi » pour souligner votre nom, et ajoutez une adresse pour renvoyer vers le
+      portfolio de la personne.
     </p>
     <ListeOrdonnee
       table="projet_credits"
       lignes={credits}
       projetId={id}
       retour={retour}
-      libelleAjout="Ajouter un poste"
+      libelleAjout="Ajouter un rôle"
+      etiquette={(l, i) => `${String(i + 1).padStart(2, '0')}${l.poste ? ` — ${l.poste}` : ''}`}
       champs={[
-        { nom: 'poste', libelle: 'Poste' },
+        { nom: 'poste', libelle: 'Rôle' },
         { nom: 'noms', libelle: 'Nom(s)' },
+        {
+          nom: 'url',
+          libelle: 'Lien — facultatif',
+          type: 'lien',
+          aide: 'Le site ou le portfolio de la personne. Le nom devient alors cliquable.',
+        },
         { nom: 'cest_moi', libelle: "C'est moi — souligner", type: 'case' },
       ]}
     />

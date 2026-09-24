@@ -6,6 +6,7 @@
  * Les valeurs entre crochets sont des trous à combler depuis /admin.
  */
 import { ouvrir } from './outils.mjs';
+import { NOTE_CREDITS } from '../src/lib/textes.mjs';
 
 const { db } = await ouvrir();
 
@@ -49,8 +50,7 @@ const REGLAGES = {
   contact_lieu: 'Romont, canton de Fribourg. Je me déplace en Suisse romande.',
   contact_agences:
     "Agences : je travaille aussi en sous-traitance — intégration front-end, motion design, cadrage. Dites-le dans le message, je réponds avec mon tarif journalier.",
-  generique_note:
-    "Extrait du générique du film, tel qu'il y figure. Les postes que je n'ai pas tenus sont nommés aussi : c'est ce qui rend le mien crédible.",
+  credits_note: NOTE_CREDITS,
 };
 
 const PROJETS = [

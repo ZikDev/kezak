@@ -67,20 +67,22 @@ const dateFr = (s: string) => (s ? `${s.slice(8, 10)}.${s.slice(5, 7)}.${s.slice
   </section>
 
   {/*
-    La mention du générique s'affiche sur chaque fiche projet, en marge du
-    générique. Sa place est ici, pas dans « Général ».
+    La mention s'affiche sur chaque fiche projet, en marge des crédits. Sa
+    place est ici, pas dans « Général ». Elle s'appelait « générique » :
+    un projet web ou photographique n'en a pas, et la moitié des fiches
+    parlaient donc d'un film qui n'existait pas.
   */}
-  <section class="adm__section" id="sec-generique">
-    <header><h2 class="adm__num">01 — Mention en marge du générique</h2></header>
+  <section class="adm__section" id="sec-credits">
+    <header><h2 class="adm__num">01 — Mention en marge des crédits</h2></header>
     <p class="adm__aide">
-      Elle apparaît sur toutes les fiches projet, à côté du générique.
+      Elle apparaît sur toutes les fiches projet, à côté des crédits.
     </p>
     <form method="post" action="/admin/api/enregistrer">
       <input type="hidden" name="csrf" value={csrf} />
       <input type="hidden" name="retour" value={retour} />
       <p class="adm__champ">
-        <label for="generique_note">Le texte</label>
-        <textarea id="generique_note" name="r_generique_note" rows="3" maxlength="400" set:text={r.generique_note} />
+        <label for="credits_note">Le texte</label>
+        <textarea id="credits_note" name="r_credits_note" rows="3" maxlength="400" set:text={r.credits_note} />
       </p>
       <div class="adm__actions">
         <button class="adm__bouton adm__bouton--plein" type="submit">Enregistrer</button>

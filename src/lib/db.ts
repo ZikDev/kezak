@@ -111,6 +111,9 @@ export const faitsDuProjet = (id: number) =>
   listeOrdonnee('projet_faits')('WHERE projet_id = ?', id);
 export const creditsDuProjet = (id: number) =>
   listeOrdonnee('projet_credits')('WHERE projet_id = ?', id);
+/** Les liens d'un projet. Une ligne sans adresse n'est pas affichée. */
+export const liensDuProjet = (id: number) =>
+  listeOrdonnee('projet_liens')('WHERE projet_id = ?', id);
 
 /**
  * Le contenu de la galerie d'un projet.
@@ -158,6 +161,7 @@ export const TABLES_ADMIN = new Set([
   'projet_sections',
   'projet_faits',
   'projet_credits',
+  'projet_liens',
   'projet_medias',
   'prestations',
   'methode',
@@ -200,6 +204,11 @@ export function reordonner(table: string, ids: number[]) {
 }
 
 export function prochainePosition(table: string, where = '', ...params: any[]): number {
+  // Le nom de table est interpolé : c'était la seule des fonctions
+  // génériques qui ne le vérifiait pas. Ses appelants sont tous sûrs
+  // aujourd'hui — et c'est précisément le genre de garantie qui se perd au
+  // prochain ajout de route.
+  if (!TABLES_ADMIN.has(table)) throw new Error('Table non autorisée');
   const l = db
     .prepare(`SELECT COALESCE(MAX(position), -1) + 1 AS p FROM ${table} ${where}`)
     .get(...params) as { p: number };

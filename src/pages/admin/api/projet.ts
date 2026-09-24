@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
 import { db, prochainePosition } from '../../../lib/db';
-import { nettoyer, slugifier } from '../../../lib/admin';
+import { nettoyer, slugifier, CATEGORIES } from '../../../lib/admin';
 
 export const prerender = false;
 
@@ -23,7 +23,12 @@ export const POST: APIRoute = async ({ request, redirect, locals }) => {
   let n = 2;
   while (db.prepare('SELECT id FROM projets WHERE slug = ?').get(slug)) slug = `${base}-${n++}`;
 
-  const categorie = nettoyer(f.get('categorie'), 30) || 'autre';
+  // La catégorie n'est pas un texte libre : c'est elle qui sert de filtre
+  // sur la page des projets. Une valeur inconnue y créait un bouton
+  // fantôme, ou pire, rangeait le projet dans une catégorie qui
+  // n'existait nulle part ailleurs.
+  const categorieBrute = nettoyer(f.get('categorie'), 30);
+  const categorie = CATEGORIES.some((c) => c.valeur === categorieBrute) ? categorieBrute : 'autre';
   const annee = nettoyer(f.get('annee'), 20);
   const categorieTxt = nettoyer(f.get('categorie_txt'), 80);
   const avecGabarit = f.get('gabarit') === '1';

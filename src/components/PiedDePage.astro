@@ -1,10 +1,13 @@
 ---
 import { tousReglages } from '../lib/db';
+import { lienSur } from '../lib/admin';
 const r = tousReglages();
+// Repassées au filtre à l'affichage : le contrôle à l'écriture est plus
+// récent que la base, et ce pied de page est sur toutes les pages du site.
 const reseaux = [
-  ['LinkedIn', r.reseau_linkedin],
-  ['Instagram', r.reseau_instagram],
-  ['Behance', r.reseau_behance],
+  ['LinkedIn', lienSur(r.reseau_linkedin)],
+  ['Instagram', lienSur(r.reseau_instagram)],
+  ['Behance', lienSur(r.reseau_behance)],
 ].filter(([, url]) => url);
 const annee = new Date().getFullYear();
 ---

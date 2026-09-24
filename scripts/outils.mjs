@@ -2,6 +2,7 @@ import '../src/lib/env.mjs';
 import { mkdirSync } from 'node:fs';
 import { join, isAbsolute, resolve } from 'node:path';
 import { SCHEMA } from '../src/lib/schema.mjs';
+import { migrationsEnAttente } from '../src/lib/migrations.mjs';
 
 /**
  * Charge better-sqlite3 en expliquant clairement ce qui se passe s'il
@@ -43,7 +44,18 @@ export async function ouvrir() {
   const db = new Database(join(dossier, 'kezak.db'));
   db.pragma('journal_mode = WAL');
   db.pragma('foreign_keys = ON');
+  // Le serveur attend cinq secondes qu'un verrou se libère ; les scripts
+  // renonçaient à la première tentative. La sauvegarde nocturne échouait
+  // donc sur « database is locked » dès qu'un visiteur envoyait un message
+  // à cet instant précis.
+  db.pragma('busy_timeout = 5000');
   db.exec(SCHEMA);
+  // Les scripts ouvraient la base sans jamais appliquer les migrations :
+  // « npm run migrate » annonçait « Base prête » sur une base dont la forme
+  // datait de la version précédente, et « npm run seed » écrivait ensuite
+  // dans des colonnes qui n'existaient pas. Les scripts et le serveur
+  // passent maintenant par le même chemin.
+  for (const nom of migrationsEnAttente(db)) console.log(`  migration appliquée : ${nom}`);
   return { db, dossier };
 }
 

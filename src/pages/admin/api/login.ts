@@ -88,7 +88,11 @@ export const POST: APIRoute = async ({ request, cookies, clientAddress, redirect
 
   effacerTentatives(cleIp);
   effacerTentatives(cleCompte);
-  effacerTentatives('login-global');
+  // Le compteur global n'est PAS remis à zéro par une connexion réussie.
+  // Il l'était, et c'était un trou : il suffisait d'une connexion
+  // légitime — la vôtre, en pleine journée — pour rendre au reste du monde
+  // cent nouvelles tentatives. Les deux autres compteurs, eux, désignent
+  // celui qui vient de prouver qui il est : les effacer est juste.
   nettoyerSessions();
 
   const { jeton, maxAge } = creerSession(

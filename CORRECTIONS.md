@@ -1,5 +1,127 @@
 # Ce qui a été corrigé
 
+## Version 6.2 — les liens, les crédits, et un audit qui a rapporté
+
+### 1. Une section « Liens » sur la fiche projet
+
+Juste avant la galerie. Chaque lien est une carte : un intitulé, le domaine
+où il mène — écrit en clair, parce qu'on a le droit de savoir où l'on va
+avant de cliquer — et une précision facultative. Les liens externes
+s'ouvrent dans un nouvel onglet et le disent aux lecteurs d'écran.
+
+Côté administration, c'est la section **06 — Liens**, réordonnable comme le
+reste. Une ligne sans adresse ou sans intitulé n'apparaît pas sur le site :
+on peut donc la créer vide et la remplir plus tard.
+
+Trois formes d'adresse sont acceptées : une adresse complète
+(`https://mcf-fribourg.ch`), une page de ce site (`/projets/mon-projet`),
+une adresse de courriel (`mailto:nom@exemple.ch`). Une adresse collée sans
+`https://` le reçoit.
+
+### 2. Le générique devient les crédits, et un nom peut porter un lien
+
+Le mot « générique » n'a de sens que pour un film. La section s'appelle
+**Crédits**, et le texte qui l'accompagne parle du générique, du colophon
+ou des mentions d'un projet — selon ce qu'on y met.
+
+La phrase affichée en marge était rangée dans la base sous une clé au nom
+de l'ancienne section, et sa valeur parlait d'un film. La migration la
+déplace, **et** la reformule — sauf si vous l'aviez réécrite, auquel cas
+votre texte est conservé mot pour mot.
+
+Chaque ligne de crédits accepte désormais une adresse : le nom devient
+cliquable, et renvoie vers le portfolio de la personne. Souligné
+discrètement, coloré au survol — une colonne de noms tous soulignés se lit
+comme une liste de boutons.
+
+### 3. Ce que la base a dû apprendre
+
+Une table `projet_liens`, et une colonne `url` sur les crédits. La première
+est créée toute seule, la seconde passe par la **migration 2**, qui
+s'exécute au démarrage. Rien à taper. *Vérifié par exécution sur quatre
+bases : version 6, version 6 avec un texte personnalisé, base neuve, et
+version 5 — où les deux migrations s'enchaînent sans rien perdre.*
+
+---
+
+## L'audit de la version 6.2
+
+Confié à une relecture adverse, qui a trouvé douze choses. Neuf sont
+corrigées, trois ne demandaient rien. Les six qui comptent :
+
+**1. La fonctionnalité était morte-née — grave, et de mon fait.**
+Deux listes blanches gouvernent l'écriture : `CHAMPS` dit quelles colonnes
+sont modifiables, `TABLES_ADMIN` dit quelles tables le sont. J'avais
+déclaré `projet_liens` dans la première et oublié la seconde. Résultat :
+« Ajouter un lien » répondait « Cette rubrique n'est pas modifiable ».
+Rien de dangereux — le refus est le bon côté de l'erreur — mais deux
+listes qui doivent dire la même chose et qui divergent en silence, c'est
+un piège qui se referme à chaque ajout. **`npm run verif` les compare
+maintenant**, et refuse de passer si l'une oublie ce que l'autre déclare.
+*Vérifié en retirant la ligne : le contrôle la signale.*
+
+**2. Les trois liens de réseaux sociaux n'étaient filtrés nulle part — sérieux.**
+Ils sont enregistrés comme du texte ordinaire et posés en `href` dans le
+pied de page de **toutes** les pages du site. Un `javascript:` y aurait
+survécu ; seule la politique de sécurité du contenu l'aurait arrêté en
+production, et pas en développement. Ils passent maintenant par le même
+filtre que les autres adresses, à l'écriture comme à l'affichage. La
+règle est devenue un contrôle automatique : **toute colonne dont le nom
+finit par « url » doit passer par le filtre**, sans quoi `npm run verif`
+refuse.
+
+**3. Réordonner une ligne se fiait à un champ caché — sérieux.**
+Les flèches ↑ ↓ cherchaient la ligne voisine dans le projet indiqué par
+le formulaire, et non dans celui de la ligne déplacée. Un identifiant
+forgé faisait échanger la position d'une ligne avec celle d'un autre
+projet, et désordonnait les deux. Le projet est maintenant lu sur la
+ligne elle-même. *Constat vérifié par exécution avant correction.*
+
+**4. Le démarrage prenait le verrou d'écriture pour ne rien faire — sérieux.**
+Les migrations ouvraient une transaction en écriture immédiate à chaque
+démarrage, même lorsqu'il n'y avait rien à migrer. La sauvegarde nocturne
+échouait donc sur « database is locked » si un visiteur envoyait un
+message au même instant, et le serveur refusait de démarrer si un script
+tenait le verrou. Le numéro de version est désormais lu **avant**
+d'ouvrir quoi que ce soit ; et les scripts attendent cinq secondes qu'un
+verrou se libère, comme le serveur le faisait déjà. *Vérifié par
+exécution : démarrage réussi pendant une écriture concurrente.*
+
+**5. Supprimer un média par la mauvaise porte laissait ses fichiers — sérieux.**
+La route générique effaçait la ligne sans toucher aux quatre fichiers sur
+le disque ; seule la route dédiée faisait le ménage. La médiathèque se
+vidait à l'écran pendant que le dossier grossissait. La route générique
+refuse désormais cette table.
+
+**6. Une connexion réussie rendait cent tentatives au monde entier — mineur.**
+Le compteur global de tentatives était remis à zéro à chaque connexion
+réussie. Le vôtre, à midi, rouvrait le quota de tout le monde. Les deux
+compteurs qui désignent celui qui vient de prouver son identité sont
+toujours effacés ; le compteur global, non.
+
+**Aussi** : la catégorie d'un projet est validée contre la liste des six
+(une valeur forgée créait un filtre fantôme sur la page des projets) ;
+`prochainePosition` vérifie le nom de table comme ses quatre sœurs ;
+l'identifiant YouTube de la fiche projet passe par le même contrôle
+d'hôte que celui de la galerie — il acceptait n'importe quel site
+contenant « v= » ; et les textes par défaut, jusque-là recopiés à trois
+endroits, vivent dans un seul fichier.
+
+**Ce qui a tenu.** Le filtre d'adresses a été attaqué par 45 charges —
+`javascript:` sous toutes ses graphies, `data:`, `blob:`, `vbscript:`,
+encodages en pourcentage, espaces Unicode, `//`, `/\` — aucune n'est
+passée. Aucune injection SQL n'est atteignable. Les clés étrangères
+empêchent d'attacher une ligne à un projet inexistant, et `projet_id`
+n'est modifiable par aucun formulaire. La politique de sécurité du contenu
+n'a besoin d'aucune directive supplémentaire pour des liens sortants.
+
+**Responsive.** Les cartes de liens passent d'une colonne à trois selon la
+largeur, sans jamais déborder — mesuré à 1728, 390 et 320 px. Un nom de
+crédit sans espace ne pousse plus la colonne hors de l'écran.
+
+---
+
+
 ## Version 6.1 — la mise en page, revue
 
 Deux retours après la v6, tous deux justes.

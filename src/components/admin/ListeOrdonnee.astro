@@ -7,8 +7,10 @@
 interface Champ {
   nom: string;
   libelle: string;
-  type?: 'texte' | 'zone' | 'case';
+  type?: 'texte' | 'zone' | 'case' | 'lien';
   lignes?: number;
+  /** Petite phrase sous le champ — ce qu'on attend, et pas ce qu'on refuse. */
+  aide?: string;
 }
 
 interface Props {
@@ -108,6 +110,33 @@ const csrf = Astro.locals.csrf;
                 />
                 {c.libelle}
               </label>
+            ) : c.type === 'lien' ? (
+              /*
+                « type=text » et non « type=url », malgré les apparences :
+                « type=url » exige un schéma, et refuse donc « /projets/mcf »
+                — un lien vers une autre page du site, qui est exactement ce
+                qu'on veut pouvoir écrire ici. Le clavier d'un téléphone
+                passe quand même en mode adresse grâce à « inputmode », et
+                c'est le serveur qui juge, comme toujours.
+              */
+              <p class="adm__champ">
+                <label for={`${table}-${l.id}-${c.nom}`}>{c.libelle}</label>
+                <input
+                  type="text"
+                  inputmode="url"
+                  id={`${table}-${l.id}-${c.nom}`}
+                  name={`c_${c.nom}`}
+                  value={l[c.nom] ?? ''}
+                  maxlength="600"
+                  placeholder="https://exemple.ch"
+                  aria-describedby={c.aide ? `${table}-${l.id}-${c.nom}-aide` : undefined}
+                />
+                {c.aide && (
+                  <span class="adm__note" id={`${table}-${l.id}-${c.nom}-aide`}>
+                    {c.aide}
+                  </span>
+                )}
+              </p>
             ) : c.type === 'zone' ? (
               <p class="adm__champ">
                 <label for={`${table}-${l.id}-${c.nom}`}>{c.libelle}</label>

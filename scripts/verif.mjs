@@ -104,7 +104,45 @@ if (!existsSync('.env')) {
   avertissements.push('.env absent — copiez .env.example et remplissez-le');
 }
 
-/* 9. Node et les modules natifs ------------------------------------- */
+/* 9. Les deux listes blanches disent la même chose ------------------ */
+/* « CHAMPS » (admin.ts) dit quelles COLONNES sont modifiables ;
+   « TABLES_ADMIN » (db.ts) dit quelles TABLES le sont. Une table déclarée
+   dans l'une et oubliée dans l'autre ne produit aucune erreur au build :
+   la fonctionnalité est simplement morte, et le message affiché
+   (« Cette rubrique n'est pas modifiable ») envoie chercher ailleurs.
+   C'est arrivé, d'où ce contrôle. */
+{
+  const srcAdmin = readFileSync('src/lib/admin.ts', 'utf8');
+  const srcDb = readFileSync('src/lib/db.ts', 'utf8');
+
+  const blocChamps = srcAdmin.slice(srcAdmin.indexOf('CHAMPS'), srcAdmin.indexOf('const LIENS'));
+  const tablesChamps = [...blocChamps.matchAll(/^\s{2}([a-z_]+):\s*\[/gm)].map((m) => m[1]);
+
+  const blocTables = srcDb.slice(srcDb.indexOf('TABLES_ADMIN = new Set('));
+  const tablesDb = new Set(
+    [...blocTables.slice(0, blocTables.indexOf(']')).matchAll(/'([a-z_]+)'/g)].map((m) => m[1])
+  );
+
+  for (const t of tablesChamps) {
+    if (!tablesDb.has(t)) {
+      erreurs.push(`src/lib/db.ts : la table « ${t} » est dans CHAMPS mais absente de TABLES_ADMIN — elle sera refusée à l'enregistrement`);
+    }
+  }
+
+  /* Et toute colonne qui est une adresse passe par le filtre des liens :
+     une colonne nommée « url » ou « …_url » finit dans un attribut href,
+     où le nettoyage ordinaire ne protège de rien. */
+  const blocLiens = srcAdmin.slice(srcAdmin.indexOf('const LIENS'), srcAdmin.indexOf('REGLAGES_LIENS'));
+  const liens = new Set([...blocLiens.matchAll(/'([a-z_]+)'/g)].map((m) => m[1]));
+  const colonnes = new Set([...blocChamps.matchAll(/'([a-z_]+)'/g)].map((m) => m[1]));
+  for (const c of colonnes) {
+    if ((c === 'url' || c.endsWith('_url')) && !liens.has(c)) {
+      erreurs.push(`src/lib/admin.ts : la colonne « ${c} » est une adresse mais ne passe pas par LIENS`);
+    }
+  }
+}
+
+/* 10. Node et les modules natifs ------------------------------------ */
 const majeure = Number(process.versions.node.split('.')[0]);
 if (majeure < 20) {
   erreurs.push(`Node ${process.versions.node} est trop ancien — il faut 20.12 au minimum.`);

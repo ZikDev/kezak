@@ -109,13 +109,28 @@ CREATE TABLE IF NOT EXISTS projet_faits (
   valeur    TEXT NOT NULL DEFAULT ''
 );
 
+/* « url » : l'adresse d'une personne créditée — son portfolio, son site.
+   Facultative, et validée à l'écriture comme à l'affichage : seuls http,
+   https, mailto et un chemin interne sont acceptés. */
 CREATE TABLE IF NOT EXISTS projet_credits (
   id        INTEGER PRIMARY KEY,
   projet_id INTEGER NOT NULL REFERENCES projets(id) ON DELETE CASCADE,
   position  INTEGER NOT NULL,
   poste     TEXT NOT NULL DEFAULT '',
   noms      TEXT NOT NULL DEFAULT '',
+  url       TEXT NOT NULL DEFAULT '',
   cest_moi  INTEGER NOT NULL DEFAULT 0
+);
+
+/* Les liens d'un projet : le site livré, un article, une fiche, une
+   boutique. Ils s'affichent juste avant la galerie. */
+CREATE TABLE IF NOT EXISTS projet_liens (
+  id        INTEGER PRIMARY KEY,
+  projet_id INTEGER NOT NULL REFERENCES projets(id) ON DELETE CASCADE,
+  position  INTEGER NOT NULL,
+  libelle   TEXT NOT NULL DEFAULT '',
+  url       TEXT NOT NULL DEFAULT '',
+  note      TEXT NOT NULL DEFAULT ''
 );
 
 /* Une entrée de galerie est SOIT un fichier du site (media_id), SOIT une

@@ -28,6 +28,8 @@
  * l'état d'une colonne, et il ne s'exécute qu'une fois.
  */
 
+import { NOTE_CREDITS, ANCIENNE_NOTE_GENERIQUE } from './textes.mjs';
+
 /** Les colonnes d'une table, par leur nom. */
 function colonnes(db, table) {
   // SQLite n'accepte pas de paramètre lié dans un PRAGMA, d'où
@@ -76,8 +78,44 @@ function galerieAccepteYoutube(db) {
   }
 }
 
+/**
+ * Le générique devient les crédits, et un crédit peut porter un lien.
+ *
+ * Deux gestes, et aucune table à reconstruire : ajouter une colonne est
+ * l'une des rares modifications que SQLite sait faire en place.
+ *
+ * Le second geste touche un réglage, pas une table. Le texte affiché en
+ * marge des crédits était rangé sous la clé « generique_note », et sa
+ * valeur d'origine parlait du générique d'un film — ce qui ne veut rien
+ * dire pour un site web ou une série de photographies. La valeur est
+ * déplacée sous « credits_note » ; et si elle n'a jamais été retouchée,
+ * elle est remplacée par une formulation qui vaut pour tous les projets.
+ * Une phrase que l'on a écrite soi-même, elle, est conservée telle quelle :
+ * une migration n'efface pas le travail de quelqu'un.
+ */
+function creditsEtLiens(db) {
+  if (!colonnes(db, 'projet_credits').has('url')) {
+    db.exec("ALTER TABLE projet_credits ADD COLUMN url TEXT NOT NULL DEFAULT ''");
+  }
+
+  const ancienne = db.prepare("SELECT valeur FROM reglages WHERE cle = 'generique_note'").get();
+  if (ancienne) {
+    const valeur =
+      ancienne.valeur.trim() === ANCIENNE_NOTE_GENERIQUE ? NOTE_CREDITS : ancienne.valeur;
+    // « INSERT OR IGNORE » : si « credits_note » existe déjà — parce que la
+    // migration a été interrompue après l'insertion et avant la suppression —
+    // c'est la valeur déjà en place qui gagne, et non l'ancienne qui
+    // reviendrait l'écraser.
+    db.prepare("INSERT OR IGNORE INTO reglages (cle, valeur) VALUES ('credits_note', ?)").run(valeur);
+    db.prepare("DELETE FROM reglages WHERE cle = 'generique_note'").run();
+  }
+}
+
 /** Numéro de version → ce qu'il faut faire pour l'atteindre. */
-const MIGRATIONS = [{ version: 1, nom: 'galerie : accepte les vidéos YouTube', appliquer: galerieAccepteYoutube }];
+const MIGRATIONS = [
+  { version: 1, nom: 'galerie : accepte les vidéos YouTube', appliquer: galerieAccepteYoutube },
+  { version: 2, nom: 'crédits : un lien par nom, et la note renommée', appliquer: creditsEtLiens },
+];
 
 export const VERSION_CIBLE = MIGRATIONS[MIGRATIONS.length - 1].version;
 
@@ -90,12 +128,33 @@ export const VERSION_CIBLE = MIGRATIONS[MIGRATIONS.length - 1].version;
 function versionInitiale(db) {
   const cols = colonnes(db, 'projet_medias');
   if (cols.size === 0) return VERSION_CIBLE; // table absente : schema.mjs vient de la créer au bon format
-  return cols.has('youtube') ? 1 : 0;
+  if (!cols.has('youtube')) return 0;
+  if (!colonnes(db, 'projet_credits').has('url')) return 1;
+  // La colonne est là, mais la migration 2 fait deux choses : la colonne
+  // ET le renommage du réglage. Une base restaurée par morceaux peut avoir
+  // l'une sans l'autre, et déclarer « c'est fait » ferait disparaître le
+  // texte affiché en marge des crédits. On ne déclare l'étape faite que
+  // lorsque ses deux moitiés le sont.
+  const reste = db.prepare("SELECT 1 FROM reglages WHERE cle = 'generique_note'").get();
+  return reste ? 1 : 2;
 }
 
 /** Applique ce qui manque. Renvoie la liste de ce qui a été fait. */
 export function migrationsEnAttente(db) {
   const faites = [];
+
+  // Coup d'œil AVANT d'ouvrir quoi que ce soit. Sans lui, chaque démarrage
+  // et chaque script ouvraient une transaction en écriture immédiate pour
+  // constater qu'il n'y avait rien à faire — donc réclamaient le verrou
+  // d'écriture de la base. Une sauvegarde nocturne lancée pendant qu'un
+  // visiteur envoie un message échouait sur « database is locked », et le
+  // serveur refusait de démarrer si un script tenait le verrou.
+  // La lecture est faite hors transaction : elle peut être périmée d'un
+  // instant, mais elle ne peut l'être que dans un sens — une autre
+  // migration vient de passer — et ce cas est repris dans la transaction,
+  // qui relit le numéro avant d'agir.
+  const version = db.pragma('user_version', { simple: true });
+  if (version >= VERSION_CIBLE) return faites;
 
   // « immediate » plutôt que le mode différé par défaut : la transaction
   // prend le verrou d'écriture dès son ouverture, donc AVANT la lecture du

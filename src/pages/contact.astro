@@ -2,8 +2,16 @@
 import Base from '../layouts/Base.astro';
 import Grain from '../components/Grain.astro';
 import { etapesContact, tousReglages } from '../lib/db';
+import { lienSur } from '../lib/admin';
 
 const r = tousReglages();
+// Comme au pied de page : les adresses des réseaux sont repassées au
+// filtre à l'affichage, et pas seulement à l'enregistrement.
+const reseaux = [
+  ['Instagram', lienSur(r.reseau_instagram)],
+  ['LinkedIn', lienSur(r.reseau_linkedin)],
+  ['Behance', lienSur(r.reseau_behance)],
+].filter(([, url]) => url);
 const etapes = etapesContact();
 const csrf = Astro.locals.csrf;
 const envoye = Astro.url.searchParams.get('envoye') === '1';
@@ -184,9 +192,13 @@ const echeances = ['Pas de date fixe', 'Dans le mois', 'Dans les trois mois', 'P
         <section>
           <p class="etiquette etiquette--accent">Ailleurs</p>
           <ul class="reseaux mono">
-            {r.reseau_instagram && <li><a href={r.reseau_instagram} rel="me noopener">Instagram</a></li>}
-            {r.reseau_linkedin && <li><a href={r.reseau_linkedin} rel="me noopener">LinkedIn</a></li>}
-            {r.reseau_behance && <li><a href={r.reseau_behance} rel="me noopener">Behance</a></li>}
+            {reseaux.map(([nom, url]) => (
+              <li>
+                <a href={url} rel="me noopener">
+                  {nom}
+                </a>
+              </li>
+            ))}
           </ul>
         </section>
 

@@ -1,6 +1,18 @@
 import type { APIRoute } from 'astro';
 import { majLigne, definirReglage, db } from '../../../lib/db';
-import { champsAutorises, REGLAGES_AUTORISES, nettoyer, slugifier, cheminInterne, ancreSure, retourVers } from '../../../lib/admin';
+import {
+  champsAutorises,
+  REGLAGES_AUTORISES,
+  nettoyer,
+  slugifier,
+  cheminInterne,
+  ancreSure,
+  retourVers,
+  identifiantYoutube,
+  lienSur,
+  REGLAGES_LIENS,
+  CATEGORIES,
+} from '../../../lib/admin';
 
 export const prerender = false;
 
@@ -23,7 +35,13 @@ export const POST: APIRoute = async ({ request, redirect, locals }) => {
       if (!cle.startsWith('r_')) continue;
       const nom = cle.slice(2);
       if (!REGLAGES_AUTORISES.has(nom)) continue;
-      definirReglage(nom, nettoyer(valeur, 4000));
+      if (REGLAGES_LIENS.has(nom)) {
+        const propre = lienSur(valeur);
+        if (propre === '' && String(valeur ?? '').trim() !== '') return sur('err=lien');
+        definirReglage(nom, propre);
+      } else {
+        definirReglage(nom, nettoyer(valeur, 4000));
+      }
       reglages++;
     }
 
@@ -32,6 +50,15 @@ export const POST: APIRoute = async ({ request, redirect, locals }) => {
 
     if (table && id) {
       const champs = champsAutorises(table, f);
+
+      // Une adresse refusée est vidée par le filtre. Sans ce contrôle, on
+      // cliquait « Enregistrer », on lisait « Modifications enregistrées »,
+      // et le champ revenait vide sans un mot — ce qui donne l'impression
+      // que le site a perdu la saisie. On refuse l'enregistrement entier et
+      // on le dit : rien n'est écrit, la saisie est encore dans la page.
+      if (champs.url === '' && String(f.get('c_url') ?? '').trim() !== '') {
+        return sur('err=lien');
+      }
 
       if (table === 'projets') {
         // Le slug est toujours normalisé, et reste unique.
@@ -49,10 +76,19 @@ export const POST: APIRoute = async ({ request, redirect, locals }) => {
         if (champs.statut !== undefined && !['brouillon', 'publie'].includes(champs.statut)) {
           champs.statut = 'brouillon';
         }
+        // Même raison qu'à la création : la catégorie sert de filtre, elle
+        // ne peut valoir que l'une des six.
+        if (champs.categorie !== undefined && !CATEGORIES.some((c) => c.valeur === champs.categorie)) {
+          champs.categorie = 'autre';
+        }
         if (champs.youtube !== undefined) {
-          // On accepte une URL collée et on n'en garde que l'identifiant.
-          const m = /(?:v=|youtu\.be\/|embed\/|shorts\/)([A-Za-z0-9_-]{6,20})/.exec(champs.youtube);
-          champs.youtube = m ? m[1] : /^[A-Za-z0-9_-]{6,20}$/.test(champs.youtube) ? champs.youtube : '';
+          // On accepte une adresse collée et on n'en garde que
+          // l'identifiant. Le contrôle de l'hôte est celui de la galerie :
+          // il était écrit ici en plus court, et acceptait n'importe quel
+          // site contenant « v= » dans son adresse.
+          const avant = String(champs.youtube ?? '').trim();
+          champs.youtube = identifiantYoutube(avant);
+          if (avant !== '' && champs.youtube === '') return sur('err=youtube');
         }
       }
 
