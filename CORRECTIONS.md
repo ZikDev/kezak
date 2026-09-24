@@ -1,5 +1,55 @@
 # Ce qui a été corrigé
 
+## Version 6.3 — la boucle vidéo sort de l'accueil
+
+Chaque projet pouvait déjà porter une boucle vidéo, mais elle ne servait
+qu'à un seul endroit : l'écran d'accueil qui pointe vers lui. Elle tourne
+maintenant à trois endroits, avec le même fichier et le même réglage —
+**Boucle vidéo**, section 01 de la fiche projet :
+
+- **dans le héros de la fiche projet**, par-dessus l'image, qui reste
+  dessous et lui sert de poster ;
+- **dans la vignette de l'annuaire**, au survol de la carte ;
+- sur l'écran d'accueil, comme avant.
+
+Un composant unique, `BoucleVideo.astro`, pose la vidéo dans un cadre qui
+existe déjà. Il ne fait que cela : pas de dégradé, pas de grain, pas de
+voile — ce cadre a déjà les siens.
+
+### Ce qui se charge, et quand
+
+C'est la partie qui compte : une grille de six vignettes qui tourneraient
+toutes ensemble, ce sont six décodages vidéo simultanés pour une seule
+qu'on regarde, sur une page qu'on fait souvent défiler depuis un
+téléphone.
+
+| Où | Quand la vidéo se charge | Quand elle s'arrête |
+| --- | --- | --- |
+| Héros d'une fiche | à l'approche du défilement | en sortant du champ |
+| Carte, avec une souris | au survol, ou à la mise au point au clavier | quand la souris s'en va |
+| Carte, sans souris | quand elle devient **la mieux visible** de la page | dès qu'une autre le devient |
+| Partout | jamais si « moins d'animations » ou l'économie de données est activée | — |
+
+Sans souris, **une seule carte joue à la fois**. Un simple seuil de
+visibilité en lançait trois d'un coup sur un téléphone — la grille y étant
+sur une colonne. Le script tient la part visible de chaque carte et ne
+lance que la première.
+
+Au départ d'une carte, la vidéo s'efface en fondu vers l'image, et ne
+revient au début qu'une fois devenue invisible : sinon on verrait le saut.
+Et si le chargement se termine après que la souris est repartie, la vidéo
+n'apparaît pas — elle serait restée seule, figée sur sa première image.
+
+*Vérifié dans un vrai navigateur, sur une page qui charge le script du
+site et une vraie vidéo : au repos aucune vidéo de carte n'est même
+téléchargée ; au survol une seule joue ; au clavier aussi ; la souris
+partie, elle s'arrête, repasse à l'image et se rembobine ; sans souris,
+une seule sur six ; et en mode « moins d'animations », aucune n'est
+chargée ni affichée. Aucune erreur de script.*
+
+---
+
+
 ## Version 6.2 — les liens, les crédits, et un audit qui a rapporté
 
 ### 1. Une section « Liens » sur la fiche projet

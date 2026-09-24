@@ -1,0 +1,88 @@
+---
+/**
+ * Une boucle vidéo posée par-dessus une image, et rien d'autre.
+ *
+ * `VideoFond` fait le fond complet d'un écran d'accueil : dégradé, grain,
+ * voile. Ici on ne veut que la vidéo, parce qu'elle vient se poser dans un
+ * cadre qui existe déjà — le héros d'une fiche projet, la vignette d'une
+ * carte d'annuaire — et que ce cadre a déjà son image, son grain et son
+ * voile.
+ *
+ * Trois règles, communes aux deux emplois :
+ *
+ *   — l'image reste dessous et s'affiche tout de suite. La vidéo n'est
+ *     chargée qu'au dernier moment et apparaît en fondu par-dessus : si
+ *     elle tarde, ou ne vient jamais, la page est déjà juste ;
+ *   — rien n'est chargé si l'internaute a demandé moins d'animations ou
+ *     active l'économie de données. C'est le script qui décide, et il ne
+ *     décide qu'une fois la page affichée ;
+ *   — la vidéo est muette, en boucle, et hors du parcours du clavier :
+ *     c'est une texture, pas un contenu. Un lecteur d'écran ne doit pas
+ *     l'annoncer, et la touche de tabulation ne doit pas s'y arrêter.
+ *
+ * `survol` dit au script de ne la lancer qu'au survol ou à la mise au
+ * point — c'est ce qu'on veut dans une grille de cartes, où six vidéos
+ * qui tournent en même temps coûtent cher pour rien. Sans souris, le
+ * script retombe sur « la carte est bien visible, on la lance ».
+ */
+interface Props {
+  video?: Record<string, any> | null;
+  /** L'image déjà affichée dessous : elle sert de poster à la vidéo. */
+  poster?: Record<string, any> | null;
+  /** Ne démarrer qu'au survol ou à la mise au point. */
+  survol?: boolean;
+  classe?: string;
+}
+
+const { video = null, poster = null, survol = false, classe = '' } = Astro.props;
+
+let posterUrl = '';
+try {
+  const v = poster?.variantes ? JSON.parse(poster.variantes) : {};
+  const nom = v.webp1600 || v.webp800 || v.webp400;
+  if (nom) posterUrl = `/media/${nom}`;
+} catch {
+  posterUrl = '';
+}
+---
+
+{
+  video?.fichier && (
+    <video
+      class:list={['boucle', classe]}
+      data-video={`/media/${video.fichier}`}
+      data-survol={survol ? '' : undefined}
+      poster={posterUrl || undefined}
+      muted
+      loop
+      playsinline
+      preload="none"
+      aria-hidden="true"
+      tabindex="-1"
+    />
+  )
+}
+
+<style>
+  .boucle {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    /* Invisible tant que la première image n'est pas décodée : sans cela,
+       le cadre passe par un rectangle noir — la couleur de fond d'un
+       élément vidéo vide — avant de montrer quoi que ce soit. */
+    opacity: 0;
+    transition: opacity 700ms var(--courbe);
+    pointer-events: none;
+  }
+  .boucle.prete {
+    opacity: 1;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .boucle {
+      display: none;
+    }
+  }
+</style>

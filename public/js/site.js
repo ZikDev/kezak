@@ -88,36 +88,140 @@
     });
   }
 
-  /* --- Vidéos de fond, chargées à l'approche ---------------------- */
-  var videos = document.querySelectorAll('video[data-video]');
-  if (videos.length && !moinsDeMouvement && !economie && 'IntersectionObserver' in window) {
-    var obsVideo = new IntersectionObserver(
-      function (entrees) {
-        entrees.forEach(function (e) {
-          var v = e.target;
-          if (e.isIntersecting) {
-            if (!v.src) {
-              v.src = v.getAttribute('data-video');
-              v.addEventListener(
-                'loadeddata',
-                function () {
-                  v.classList.add('prete');
-                },
-                { once: true }
-              );
-            }
-            var p = v.play();
-            if (p && p.catch) p.catch(function () {});
-          } else if (!v.paused) {
-            v.pause();
-          }
+  /* --- Les boucles vidéo ------------------------------------------
+     Trois emplois, un seul mécanisme : le fond d'un écran d'accueil, le
+     héros d'une fiche projet, la vignette d'une carte d'annuaire.
+
+     Rien n'est chargé tant que ce n'est pas nécessaire, et rien du tout
+     si l'on a demandé moins d'animations ou activé l'économie de
+     données. L'image reste dessous : si la vidéo ne vient pas, la page
+     est déjà juste.
+
+     Deux conduites, selon l'attribut « data-survol » :
+
+       — sans lui, un fond : il se lance à l'approche du défilement et
+         s'arrête dès qu'il sort du champ ;
+       — avec lui, une carte : elle se lance au survol de la souris ou à
+         la mise au point au clavier. Une grille de six vignettes qui
+         tourneraient toutes en même temps, ce sont six décodages vidéo
+         simultanés pour une seule qu'on regarde. Là où il n'y a pas de
+         souris — un téléphone, une tablette — on retombe sur « la carte
+         occupe vraiment l'écran, on la lance », ce qui en fait au plus
+         une ou deux à la fois. */
+  var lancerBoucle = function (v) {
+    if (!v.src) {
+      v.src = v.getAttribute('data-video');
+      v.addEventListener(
+        'loadeddata',
+        function () {
+          // Le chargement peut se terminer après que la souris est
+          // repartie : sans ce contrôle, la vidéo apparaissait alors
+          // seule et figée sur sa première image.
+          if (!v.hasAttribute('data-survol') || !v.paused) v.classList.add('prete');
+        },
+        { once: true }
+      );
+    } else if (v.readyState >= 2) {
+      v.classList.add('prete');
+    }
+    var p = v.play();
+    if (p && p.catch) p.catch(function () {});
+  };
+
+  var arreterBoucle = function (v, revenir) {
+    if (!v.paused) v.pause();
+    if (!revenir) return;
+    // On repasse à l'image : la classe part, le fondu se fait tout seul,
+    // et la vidéo ne revient au début qu'une fois devenue invisible —
+    // sinon on verrait le saut.
+    v.classList.remove('prete');
+    setTimeout(function () {
+      if (!v.classList.contains('prete')) {
+        try {
+          v.currentTime = 0;
+        } catch (e) {
+          /* la vidéo n'est pas encore assez chargée pour être rembobinée */
+        }
+      }
+    }, 700);
+  };
+
+  if (!moinsDeMouvement && !economie && 'IntersectionObserver' in window) {
+    var fonds = document.querySelectorAll('video[data-video]:not([data-survol])');
+    if (fonds.length) {
+      var obsFond = new IntersectionObserver(
+        function (entrees) {
+          entrees.forEach(function (e) {
+            if (e.isIntersecting) lancerBoucle(e.target);
+            else arreterBoucle(e.target, false);
+          });
+        },
+        { rootMargin: '200px 0px' }
+      );
+      fonds.forEach(function (v) {
+        obsFond.observe(v);
+      });
+    }
+
+    var cartes = document.querySelectorAll('video[data-survol]');
+    if (cartes.length) {
+      var avecSouris =
+        window.matchMedia && window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+
+      if (avecSouris) {
+        cartes.forEach(function (v) {
+          // Le cadre écouté est la carte entière, et non la vidéo : la
+          // vidéo ne reçoit aucun événement de pointeur, et c'est voulu —
+          // c'est le lien qui doit rester cliquable de bout en bout.
+          var cadre = v.closest('a') || v.parentNode;
+          if (!cadre) return;
+          cadre.addEventListener('pointerenter', function () {
+            lancerBoucle(v);
+          });
+          cadre.addEventListener('pointerleave', function () {
+            arreterBoucle(v, true);
+          });
+          cadre.addEventListener('focusin', function () {
+            lancerBoucle(v);
+          });
+          cadre.addEventListener('focusout', function () {
+            arreterBoucle(v, true);
+          });
         });
-      },
-      { rootMargin: '200px 0px' }
-    );
-    videos.forEach(function (v) {
-      obsVideo.observe(v);
-    });
+      } else {
+        // Sans souris, c'est la carte la mieux visible qui joue — et elle
+        // seule. Un simple seuil de visibilité en lançait trois d'un coup
+        // sur un téléphone, la grille y étant sur une colonne : trois
+        // décodages vidéo simultanés pour une page qu'on fait défiler.
+        var laMieuxVisible = function () {
+          var meilleure = null;
+          for (var i = 0; i < cartes.length; i++) {
+            var part = cartes[i].partVisible || 0;
+            if (part >= 0.5 && (!meilleure || part > meilleure.partVisible)) meilleure = cartes[i];
+          }
+          for (var j = 0; j < cartes.length; j++) {
+            if (cartes[j] === meilleure) lancerBoucle(cartes[j]);
+            else arreterBoucle(cartes[j], true);
+          }
+        };
+
+        var obsCarte = new IntersectionObserver(
+          function (entrees) {
+            entrees.forEach(function (e) {
+              e.target.partVisible = e.isIntersecting ? e.intersectionRatio : 0;
+            });
+            laMieuxVisible();
+          },
+          // Plusieurs seuils : sans eux, on n'est prévenu qu'au passage de
+          // la barre, et la carte qui devient la mieux visible sans jamais
+          // franchir de seuil ne déclenche rien.
+          { threshold: [0, 0.25, 0.5, 0.75, 1] }
+        );
+        cartes.forEach(function (v) {
+          obsCarte.observe(v);
+        });
+      }
+    }
   }
 
   /* --- Le fil d'attente ------------------------------------------

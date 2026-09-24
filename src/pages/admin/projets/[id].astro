@@ -154,12 +154,12 @@ const vignette = (m: any) => {
         <ChoixMedia
           id="video_fond_id"
           nom="c_video_fond_id"
-          libelle="Boucle vidéo de fond"
+          libelle="Boucle vidéo"
           valeur={projet.video_fond_id}
           genre="video"
           medias={videos}
           vide="— aucune —"
-          aide="Utilisée par l'écran d'accueil qui pointe vers ce projet."
+          aide="Elle tourne à trois endroits : le héros de cette fiche, la vignette de l'annuaire au survol de la souris, et l'écran d'accueil qui pointe vers ce projet. L'image du héros reste dessous — c'est elle qu'on voit tant que la vidéo n'est pas prête, et c'est elle seule pour qui a demandé moins d'animations."
         />
       </div>
 
@@ -181,7 +181,7 @@ const vignette = (m: any) => {
           <label for="r-hero">Le rattacher à</label>
           <select id="r-hero" name="rattacher">
             <option value="hero">L'image du héros</option>
-            <option value="video_fond">La boucle vidéo de fond</option>
+            <option value="video_fond">La boucle vidéo</option>
             <option value="galerie">La galerie</option>
           </select>
         </p>

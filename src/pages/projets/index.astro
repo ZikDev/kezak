@@ -1,6 +1,7 @@
 ---
 import Base from '../../layouts/Base.astro';
 import Media from '../../components/Media.astro';
+import BoucleVideo from '../../components/BoucleVideo.astro';
 import { projetsPublies, media, tousReglages } from '../../lib/db';
 import { CATEGORIES } from '../../lib/admin';
 
@@ -105,6 +106,10 @@ const periode = annees.length ? `${Math.min(...annees)}–${Math.max(...annees)}
                     tailles="(max-width: 48rem) 100vw, (min-width: 110rem) 32vw, 30rem"
                     prioritaire={i === 0}
                   />
+                  {/* La boucle du projet, au survol seulement : six vidéos
+                      qui tournent ensemble coûtent une image fixe de plus
+                      par projet et la batterie de qui regarde. */}
+                  <BoucleVideo video={media(p.video_fond_id)} poster={media(p.hero_id)} survol />
                   <span class="carte__cote mono">Pl. {String(i + 1).padStart(2, '0')}</span>
                 </span>
                 <span class="carte__titre">{p.titre}</span>
@@ -128,6 +133,7 @@ const periode = annees.length ? `${Math.min(...annees)}–${Math.max(...annees)}
               <a class="carte carte--discrete" href={`/projets/${p.slug}`}>
                 <span class="carte__image">
                   <Media media={media(p.hero_id)} ratio="16 / 9" tailles="(max-width: 48rem) 100vw, 26rem" />
+                  <BoucleVideo video={media(p.video_fond_id)} poster={media(p.hero_id)} survol />
                   <span class="carte__cote mono">Pl. {String(enAvant.length + i + 1).padStart(2, '0')}</span>
                 </span>
                 <span class="carte__titre carte__titre--petit">{p.titre}</span>
@@ -299,8 +305,18 @@ const periode = annees.length ? `${Math.min(...annees)}–${Math.max(...annees)}
     transition: transform 600ms var(--courbe);
   }
   .carte:hover .carte__image :global(picture),
-  .carte:focus-visible .carte__image :global(picture) {
+  .carte:focus-visible .carte__image :global(picture),
+  .carte:hover .carte__image :global(.boucle),
+  .carte:focus-visible .carte__image :global(.boucle) {
     transform: scale(1.02);
+  }
+  /* La boucle suit le même agrandissement que l'image : pendant la
+     seconde du fondu, les deux sont visibles l'une sur l'autre, et deux
+     cadrages différents se voient. */
+  .carte__image :global(.boucle) {
+    transition:
+      opacity 700ms var(--courbe),
+      transform 600ms var(--courbe);
   }
   /* Bande sombre en haut de la vignette : le numéro de planche était posé
      en blanc directement sur l'image, sans le moindre assombrissement. Sur

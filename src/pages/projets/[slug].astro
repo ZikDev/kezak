@@ -4,6 +4,7 @@ import Media from '../../components/Media.astro';
 import Grain from '../../components/Grain.astro';
 import FacadeYoutube from '../../components/FacadeYoutube.astro';
 import Carrousel from '../../components/Carrousel.astro';
+import BoucleVideo from '../../components/BoucleVideo.astro';
 import {
   projetParSlug,
   sectionsDuProjet,
@@ -35,6 +36,7 @@ const credits = creditsDuProjet(projet.id);
 const galerie = mediasDuProjet(projet.id);
 const suivant = projetSuivant(projet);
 const hero = media(projet.hero_id);
+const boucle = media(projet.video_fond_id);
 
 /**
  * Les adresses sont repassées au filtre AU MOMENT DE L'AFFICHAGE, et pas
@@ -85,6 +87,12 @@ const metas = [
             <div class="heros__repli" aria-hidden="true" />
           )
         }
+        {/*
+          La boucle du projet, s'il en a une : posée par-dessus l'image du
+          héros, qui lui sert de poster et reste visible tant que la vidéo
+          n'est pas prête. Le grain reste au-dessus des deux.
+        */}
+        <BoucleVideo video={boucle} poster={hero} />
         <Grain id={`p${projet.id}`} opacite={0.26} />
       </div>
       <div class="heros__voile" aria-hidden="true"></div>

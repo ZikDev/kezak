@@ -455,7 +455,15 @@ seul l'identifiant est conservé. Le site affiche une façade cliquable :
 l'iframe `youtube-nocookie.com` n'est chargée qu'au clic, donc aucun script
 tiers ni cookie au chargement.
 
-**Vidéos de fond → sur le serveur.** MP4 ou WebM, envoyées depuis l'admin.
+**Boucles vidéo → sur le serveur.** MP4 ou WebM, envoyées depuis l'admin.
+Une par projet, choisie dans la section **01** de sa fiche, et elle sert à
+trois endroits : le héros de la fiche, la vignette de l'annuaire au survol,
+et l'écran d'accueil qui pointe vers ce projet. L'image du héros reste
+dessous — c'est elle qu'on voit tant que la vidéo n'est pas prête, et elle
+seule pour qui a demandé moins d'animations ou active l'économie de
+données. Sur un téléphone, une seule vignette joue à la fois : la mieux
+visible.
+
 Réglage conseillé :
 
 ```bash
@@ -483,6 +491,8 @@ demandé moins d'animations ou active l'économie de données.
 | `NODE_MODULE_VERSION ... was compiled against a different Node.js version` | même cause, même remède |
 | Une image reste en noir et blanc | la version de sharp installée refuse la courbe ; le repli s'est déclenché, voir la console |
 | `npm run dev` affiche des erreurs de script en console | vous avez modifié la politique de sécurité du contenu dans `src/middleware.ts` |
+| Une boucle vidéo ne démarre pas | « moins d'animations » est activé dans le système, ou l'économie de données dans le navigateur. C'est voulu. Sinon : le fichier est-il bien en MP4 (H.264) ou WebM ? |
+| Une vignette d'annuaire ne bouge qu'au survol | c'est voulu — six vidéos simultanées pour une seule regardée. Sans souris, c'est la vignette la mieux visible qui joue |
 | Pas de fondu entre les panneaux de l'accueil | normal sur Firefox et Safari anciens : l'effet repose sur `animation-timeline`, que ces navigateurs n'ont pas encore. Le contenu apparaît alors au défilement, en fondu simple |
 | Pas de transition entre les pages | idem : Chrome, Edge et Safari récents utilisent les transitions de document ; ailleurs, la page s'estompe et un fil avance en haut de l'écran |
 | Du contenu reste invisible sur une page publique | `/js/site.js` ne s'est pas chargé. Un filet le rend visible au bout de 2,5 s ; regardez l'onglet « Réseau » de la console |
@@ -535,8 +545,8 @@ src/
     admin/api/      toutes les écritures
     media/          sert les fichiers téléversés
     api/contact.ts  réception du formulaire
-  components/       Bandeau, Media, VideoFond, FacadeYoutube, Carrousel,
-                    Grain, Lignes
+  components/       Bandeau, Media, VideoFond, BoucleVideo, FacadeYoutube,
+                    Carrousel, Grain, Lignes
   layouts/          Base (site), Admin (back-office)
   lib/              db, auth, media, admin, motdepasse, schema, env,
                     migrations (transforme une base déjà remplie),
