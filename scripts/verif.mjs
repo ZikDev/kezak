@@ -115,7 +115,7 @@ if (!existsSync('.env')) {
   const srcAdmin = readFileSync('src/lib/admin.ts', 'utf8');
   const srcDb = readFileSync('src/lib/db.ts', 'utf8');
 
-  const blocChamps = srcAdmin.slice(srcAdmin.indexOf('CHAMPS'), srcAdmin.indexOf('const LIENS'));
+  const blocChamps = srcAdmin.slice(srcAdmin.indexOf('CHAMPS'), srcAdmin.indexOf('COLONNES_LIEN'));
   const tablesChamps = [...blocChamps.matchAll(/^\s{2}([a-z_]+):\s*\[/gm)].map((m) => m[1]);
 
   const blocTables = srcDb.slice(srcDb.indexOf('TABLES_ADMIN = new Set('));
@@ -132,12 +132,12 @@ if (!existsSync('.env')) {
   /* Et toute colonne qui est une adresse passe par le filtre des liens :
      une colonne nommée « url » ou « …_url » finit dans un attribut href,
      où le nettoyage ordinaire ne protège de rien. */
-  const blocLiens = srcAdmin.slice(srcAdmin.indexOf('const LIENS'), srcAdmin.indexOf('REGLAGES_LIENS'));
+  const blocLiens = srcAdmin.slice(srcAdmin.indexOf('COLONNES_LIEN'), srcAdmin.indexOf('REGLAGES_LIENS'));
   const liens = new Set([...blocLiens.matchAll(/'([a-z_]+)'/g)].map((m) => m[1]));
   const colonnes = new Set([...blocChamps.matchAll(/'([a-z_]+)'/g)].map((m) => m[1]));
   for (const c of colonnes) {
     if ((c === 'url' || c.endsWith('_url')) && !liens.has(c)) {
-      erreurs.push(`src/lib/admin.ts : la colonne « ${c} » est une adresse mais ne passe pas par LIENS`);
+      erreurs.push(`src/lib/admin.ts : la colonne « ${c} » est une adresse mais ne passe pas par COLONNES_LIEN`);
     }
   }
 }

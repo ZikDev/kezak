@@ -1,0 +1,180 @@
+---
+import Grain from './Grain.astro';
+
+/**
+ * Le rideau de chargement.
+ *
+ * Une fiche projet peut tirer une boucle vidéo de plusieurs méga-octets.
+ * Sans rien, on arrivait sur une page dont le héros était un rectangle
+ * fixe, la vidéo se posant dessus quelques secondes plus tard : ni une
+ * page finie, ni une page en train de venir. Le rideau assume l'attente
+ * au lieu de la subir — on regarde quelque chose pendant qu'elle dure, et
+ * la page ne se découvre qu'une fois prête.
+ *
+ * Ce qu'il faut savoir avant d'y toucher :
+ *
+ *   — il ne s'affiche QUE si le navigateur sait exécuter du JavaScript
+ *     (« @media (scripting: enabled) »). Sans cela, un visiteur qui l'a
+ *     désactivé se retrouverait devant un écran de chargement éternel,
+ *     ce qui est la plus stupide des pannes ;
+ *   — et parce que « scripting: enabled » dit seulement que le navigateur
+ *     SAIT exécuter du JavaScript, pas que « /js/site.js » s'est bien
+ *     chargé, une animation de secours le lève d'elle-même au bout de six
+ *     secondes. Cette animation est annulée dès que le script donne signe
+ *     de vie : là où il tourne, c'est lui qui décide, et il lève le
+ *     rideau bien avant ;
+ *   — il ne piège personne : « aria-hidden » le rend invisible aux
+ *     lecteurs d'écran, qui lisent la page pendant ce temps.
+ *
+ * Le fil d'attente en haut de l'écran passe PAR-DESSUS le rideau : c'est
+ * lui qui dit que le clic a été pris, et il ne doit pas disparaître au
+ * moment où il sert.
+ */
+---
+
+<div class="rideau" data-rideau-chargement aria-hidden="true">
+  <Grain id="rideau" opacite={0.16} />
+  <div class="rideau__signe">
+    <span class="rideau__marque">K</span>
+    <span class="rideau__piste"><span class="rideau__navette"></span></span>
+    <span class="mono rideau__mot">Chargement</span>
+  </div>
+</div>
+
+<style>
+  .rideau {
+    display: none;
+  }
+
+  @media (scripting: enabled) {
+    .rideau {
+      display: grid;
+      place-items: center;
+      position: fixed;
+      inset: 0;
+      /* Au-dessus du bandeau (50) et du contenu ; sous le lien
+         d'évitement (100), pour que quelqu'un qui tabule pendant
+         l'attente le voie quand même, et sous le fil d'attente (200),
+         qui doit rester visible pendant le départ. */
+      z-index: 90;
+      background: var(--abysse);
+      opacity: 1;
+      visibility: visible;
+      transition:
+        opacity 520ms var(--courbe),
+        visibility 0s 520ms;
+      /*
+        Filet de sécurité : si personne ne lève le rideau, le CSS le lève
+        au bout de six secondes.
+
+        Il était annulé par « html.js-ok », que le script pose à sa
+        PREMIÈRE ligne — alors que le rideau n'est levé qu'à la fin du
+        fichier. Une exception entre les deux, et il ne restait plus
+        personne pour lever quoi que ce soit : ni le script, qui venait de
+        mourir, ni le CSS, qui venait d'être désarmé par un script qui
+        n'avait rien fait d'autre que déclarer son existence. Le site
+        restait noir, définitivement, sans un signe.
+
+        Il n'est donc plus annulé que par le lever lui-même.
+      */
+      animation: rideau-secours 400ms var(--courbe) 6s forwards;
+    }
+
+    /* Levé — par le script, ou par le minuteur de secours qu'il arme dès
+       sa deuxième ligne. « animation: none » est indispensable : l'état
+       final d'une animation « forwards » l'emporte sur toute déclaration
+       ordinaire, et reprendrait la main au moment de redescendre.
+       « pointer-events » aussi : le temps du fondu, un rideau devenu
+       transparent continuait d'avaler les clics. */
+    :global(html.rideau-leve) .rideau {
+      animation: none;
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    /* Redescendu — on vient de cliquer sur un lien. Même spécificité que
+       la règle ci-dessus, et placée après : c'est elle qui l'emporte, et
+       il n'y a aucune classe à retirer pour cela. */
+    :global(html.va-partir) .rideau {
+      animation: none;
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+      transition:
+        opacity 260ms var(--courbe),
+        visibility 0s;
+    }
+  }
+
+  @keyframes rideau-secours {
+    to {
+      opacity: 0;
+      visibility: hidden;
+    }
+  }
+
+  .rideau__signe {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--e-4);
+    /* La gouttière, pour que rien ne touche le bord sur un téléphone. */
+    padding-inline: var(--gouttiere);
+  }
+  .rideau__marque {
+    font-family: var(--display);
+    font-weight: 200;
+    font-size: var(--t-700);
+    line-height: 1;
+    letter-spacing: var(--ls-logo);
+    /* L'interlettrage pousse à droite : sans cette compensation, le K
+       n'est pas au centre de l'écran, il est décalé d'un quart de lettre. */
+    text-indent: var(--ls-logo);
+    color: var(--papier);
+  }
+  .rideau__piste {
+    position: relative;
+    display: block;
+    width: min(60vw, 14rem);
+    height: 1px;
+    background: var(--filet-nuit-fort);
+    overflow: hidden;
+  }
+  .rideau__navette {
+    position: absolute;
+    inset-block: 0;
+    left: 0;
+    width: 34%;
+    background: var(--reactif);
+    animation: rideau-navette 1400ms var(--courbe) infinite;
+  }
+  @keyframes rideau-navette {
+    from {
+      transform: translateX(-100%);
+    }
+    to {
+      transform: translateX(294%);
+    }
+  }
+  .rideau__mot {
+    color: var(--texte-doux);
+    font-size: var(--t-100);
+    letter-spacing: var(--ls-etiquette);
+    text-transform: uppercase;
+  }
+
+  /* Moins d'animations : le rideau reste — c'est une information, pas une
+     décoration — mais plus rien ne bouge. La navette cède la place à un
+     trait plein, et les fondus deviennent immédiats. */
+  @media (prefers-reduced-motion: reduce) {
+    .rideau {
+      transition: none;
+    }
+    .rideau__navette {
+      animation: none;
+      width: 100%;
+      opacity: 0.5;
+    }
+  }
+</style>

@@ -477,6 +477,28 @@ Trois à six secondes, **sans piste audio** (`-an`), 1 à 3 Mo. Le site les
 charge à l'approche du scroll, jamais avant, et pas du tout si le visiteur a
 demandé moins d'animations ou active l'économie de données.
 
+## L'écran de chargement
+
+Il couvre la page pendant qu'elle charge, et se lève quand elle est
+prête. Ce qu'il attend, dans l'ordre d'importance : la première image de
+la boucle vidéo du héros, les images prioritaires, les polices — et au
+minimum 420 millisecondes, pour qu'il ne clignote pas sur une page déjà
+en cache. Plafond : 4,2 secondes, après quoi il se lève et le reste
+charge derrière.
+
+Au clic sur un lien, il redescend sur la page qu'on quitte et la page
+suivante arrive avec le sien : la jointure ne se voit pas.
+
+Trois filets indépendants garantissent qu'il ne peut pas rester bloqué :
+le script le lève quand la page est prête ; un minuteur armé à la
+deuxième ligne du script le lève à 4,5 s quoi qu'il arrive ensuite ; une
+animation CSS le lève à 6 s si le fichier JavaScript ne se charge pas du
+tout. Et **Échap** le lève à tout moment.
+
+Pour le modifier : `src/components/RideauChargement.astro` pour
+l'apparence, le bloc « Le rideau de chargement » en tête de
+`public/js/site.js` pour les délais.
+
 ## Dépannage
 
 | Symptôme | Cause et remède |
@@ -493,6 +515,9 @@ demandé moins d'animations ou active l'économie de données.
 | `npm run dev` affiche des erreurs de script en console | vous avez modifié la politique de sécurité du contenu dans `src/middleware.ts` |
 | Une boucle vidéo ne démarre pas | « moins d'animations » est activé dans le système, ou l'économie de données dans le navigateur. C'est voulu. Sinon : le fichier est-il bien en MP4 (H.264) ou WebM ? |
 | Une vignette d'annuaire ne bouge qu'au survol | c'est voulu — six vidéos simultanées pour une seule regardée. Sans souris, c'est la vignette la mieux visible qui joue |
+| L'écran de chargement reste affiché | appuyez sur **Échap** : la page revient tout de suite. Il se lève de lui-même au plus tard à 6 s. S'il s'éternise vraiment, `/js/site.js` ne se charge pas — onglet « Réseau » de la console |
+| L'écran de chargement s'affiche trop souvent | il paraît à chaque changement de page, c'est voulu. Il dure au minimum 420 ms, au maximum 4,2 s, et se lève dès que la page et sa vidéo sont prêtes |
+| L'écran de chargement n'apparaît jamais | JavaScript est désactivé, ou le navigateur est trop ancien pour `@media (scripting)`. Le site fonctionne sans lui |
 | Pas de fondu entre les panneaux de l'accueil | normal sur Firefox et Safari anciens : l'effet repose sur `animation-timeline`, que ces navigateurs n'ont pas encore. Le contenu apparaît alors au défilement, en fondu simple |
 | Pas de transition entre les pages | idem : Chrome, Edge et Safari récents utilisent les transitions de document ; ailleurs, la page s'estompe et un fil avance en haut de l'écran |
 | Du contenu reste invisible sur une page publique | `/js/site.js` ne s'est pas chargé. Un filet le rend visible au bout de 2,5 s ; regardez l'onglet « Réseau » de la console |
@@ -546,7 +571,7 @@ src/
     media/          sert les fichiers téléversés
     api/contact.ts  réception du formulaire
   components/       Bandeau, Media, VideoFond, BoucleVideo, FacadeYoutube,
-                    Carrousel, Grain, Lignes
+                    Carrousel, RideauChargement, Grain, Lignes
   layouts/          Base (site), Admin (back-office)
   lib/              db, auth, media, admin, motdepasse, schema, env,
                     migrations (transforme une base déjà remplie),

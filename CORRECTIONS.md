@@ -1,5 +1,145 @@
 # Ce qui a été corrigé
 
+## Version 6.4 — le rideau de chargement
+
+Une fiche projet tire maintenant une boucle vidéo de plusieurs
+méga-octets. On arrivait donc sur une page dont le héros était une image
+fixe, la vidéo se posant dessus deux secondes plus tard : ni une page
+finie, ni une page en train de venir — juste quelque chose qui bouge
+quand on ne s'y attend plus.
+
+Un rideau couvre désormais l'attente : fond cyanotype, le K de la marque,
+une navette qui va et vient sur un filet, le mot « Chargement ». La page
+ne se découvre qu'une fois prête.
+
+### Quand il se lève
+
+Il attend quatre choses, et aucune très longtemps :
+
+| Ce qu'on attend | Pourquoi | Limite |
+| --- | --- | --- |
+| 420 ms au minimum | sur une page déjà en cache, un rideau qui clignote est pire que pas de rideau | — |
+| les polices | sinon la page se découvre en Times New Roman et change de graisse sous les yeux | 1,8 s |
+| les images prioritaires | celle du héros, en pratique | 2,6 s |
+| la première image de la boucle vidéo | c'est la raison d'être du rideau | 2,6 s |
+
+Plafond général : **4,2 secondes**. Au-delà, le rideau se lève et le
+reste continue de charger derrière — faire attendre quelqu'un devant un
+écran fixe plus de quatre secondes, c'est lui faire croire à une panne.
+
+### Le passage d'une page à l'autre
+
+Au clic sur un lien interne, le rideau redescend sur la page qu'on
+quitte. La page suivante arrive avec le sien, déjà en place : les deux
+images portent le même rideau, **la jointure ne se voit pas**. Puis il se
+lève sur la page d'arrivée. Le fil d'attente en haut de l'écran passe
+par-dessus le rideau — c'est lui qui dit que le clic a été pris.
+
+Là où le navigateur sait faire les transitions de document (Chrome, Edge,
+Safari), elles se superposent au rideau sans le gêner : elles tiennent
+l'image de la page quittée jusqu'à ce que la suivante soit prête, et
+cette image porte déjà le rideau.
+
+### Ce qui se passe si quelque chose casse
+
+C'est la question qui compte : un rideau qui ne se lève pas, c'est un
+site mort. Trois filets, indépendants les uns des autres :
+
+1. le script lève le rideau dès que la page est prête ;
+2. un minuteur armé **à la deuxième ligne du script**, avant tout le
+   reste, le lève à 4,5 s quoi qu'il arrive dans ce qui suit ;
+3. une animation CSS le lève à 6 s — c'est le cas où le fichier
+   JavaScript ne se charge pas du tout.
+
+Et si le navigateur ne peut pas exécuter de JavaScript, le rideau ne
+s'affiche jamais : tout le bloc est sous `@media (scripting: enabled)`.
+
+---
+
+## L'audit de la version 6.4
+
+Relecture adverse du rideau et des boucles vidéo. Douze constats, dont un
+grave — et il était de moi.
+
+**1. Le filet de secours était désarmé 226 lignes avant l'endroit qu'il
+protégeait — grave.**
+L'animation CSS qui lève le rideau à 6 s était annulée par la classe que
+le script pose à sa toute première ligne… alors que le rideau n'était
+levé qu'à la fin du fichier. Une exception entre les deux — et tout le
+code des boucles vidéo était dans cet intervalle — et il ne restait plus
+personne : ni le script, mort, ni le CSS, désarmé par un script qui
+n'avait rien fait d'autre que déclarer son existence. **Le site restait
+noir, définitivement.** *Vérifié par exécution : exception injectée au
+milieu du fichier, rideau opaque à 8 secondes, aucune reprise.*
+
+Trois corrections plutôt qu'une : le bloc du rideau est remonté en tête
+de fichier, un minuteur de secours est armé avant tout le reste, et
+l'animation CSS n'est plus annulée que par le lever lui-même. *Vérifié :
+la même exception laisse maintenant le rideau se lever à 4,5 s.*
+
+**2. Un clic qui ne menait nulle part couvrait la page quinze secondes — sérieux.**
+Lien vers un fichier à télécharger, réponse sans contenu, navigation
+interrompue : rien ne redescendait le rideau avant le garde-fou de
+quinze secondes. C'était supportable pour un fil de deux pixels ; ça ne
+l'est pas pour un écran noir. Le délai passe à neuf secondes, et la
+touche **Échap** rend la page immédiatement. *Vérifié par exécution dans
+les trois cas.*
+
+**3. Une vignette lancée au clavier continuait de se décoder hors écran — sérieux.**
+Sur le chemin « avec souris », seul le départ de la souris arrêtait la
+vidéo. Au clavier, elle ne repartait jamais : on tabulait, on faisait
+défiler, et la vidéo tournait trois écrans plus haut. *Vérifié : carte
+focalisée, défilement de 3 500 px, vidéo toujours en lecture.* Un
+guetteur arrête maintenant ce qui quitte l'écran — il ne lance rien, il
+ne fait qu'arrêter.
+
+**4. Le rideau avalait les clics une demi-seconde après s'être levé — sérieux.**
+Il devenait transparent en 520 ms, mais ne cessait d'intercepter les
+clics qu'à la fin de ce fondu. On voyait la page, on cliquait, rien ne
+se passait. *Vérifié : à 495 ms, le point central de l'écran appartenait
+encore au rideau.* Corrigé en une ligne.
+
+**5. Le clavier entrait dans le contenu caché derrière le rideau — sérieux.**
+Rien n'était piégé — c'est voulu — mais rien n'était retenu non plus :
+une bague de focus se promenait sur des liens invisibles. Plutôt que de
+rendre la page inerte (ce qui, si le script meurt, la verrouille pour
+de bon), la première tabulation lève le rideau. Quelqu'un qui appuie sur
+Tab veut la page, pas l'écran d'attente.
+
+**6. Et un défaut que la correction elle-même a introduit.**
+En corrigeant le point 2, j'ai fait poser la classe « rideau levé » par
+une fonction qui est aussi appelée à chaque chargement de page. Le
+rideau se levait donc au premier souffle, sans rien attendre : tout ce
+travail ne servait plus à rien. Trouvé en revérifiant, et c'est
+exactement pourquoi on revérifie. *Le contrôle qui l'a attrapé est
+resté : il mesure le délai de lever, et refuse une valeur en dessous de
+400 ms.*
+
+**Aussi** : `cheminInterne` encodait une deuxième fois un chemin déjà
+encodé (`/%2Fa` devenait `/%252Fa`) ; le contrôle des adresses refusées
+à l'enregistrement ne portait que sur la colonne `url` et laissait
+`lien_url` se vider en silence ; l'attente de la vidéo ne vérifiait pas
+la présence d'`IntersectionObserver` ; et un commentaire annonçait un
+filet à 2,5 s là où il est à 6.
+
+**Ce qui a tenu.** Sans JavaScript, le rideau ne s'affiche pas du tout.
+Script en 404 : le filet CSS le lève. Onglet en arrière-plan, minuteurs
+bridés : levé quand même. « Moins d'animations » : rideau levé en 473 ms,
+navette figée, aucune vidéo chargée. Aucun `set:html` ni `innerHTML` dans
+tout le projet. SQL entièrement paramétré, noms de tables passés par la
+liste blanche. Vingt-sept charges contre le filtre d'adresses, aucune
+n'est passée. Anti-CSRF, contrôle d'origine, plafond de corps de requête,
+téléversement typé aux octets : inchangés et intacts. La politique de
+sécurité du contenu n'a besoin d'aucune directive nouvelle — `media-src`
+couvre déjà les boucles.
+
+**Responsive** : rideau mesuré à 320×640, 640×320, 280×653 et 1440×900 —
+le signe tient entier dans l'écran à chaque fois, aucun débordement
+horizontal nulle part.
+
+---
+
+
 ## Version 6.3 — la boucle vidéo sort de l'accueil
 
 Chaque projet pouvait déjà porter une boucle vidéo, mais elle ne servait

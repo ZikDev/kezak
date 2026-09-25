@@ -16,7 +16,11 @@
      renvoyait 404, expirait sur un réseau lent ou levait une exception,
      tout le contenu à fondu restait invisible, définitivement et sans
      aucun signe. Le CSS prévoit donc un filet à 2,5 secondes ; cette
-     classe est ce qui l'annule. */
+     classe est ce qui l'annule.
+
+     Le rideau de chargement, lui, a son propre filet — six secondes, et
+     il n'est PAS annulé par cette classe : voir le commentaire de
+     RideauChargement.astro, qui explique pourquoi. */
   var racine = document.documentElement;
   racine.classList.add('js-ok');
 
@@ -25,6 +29,136 @@
   var economie =
     navigator.connection && (navigator.connection.saveData === true ||
       /2g/.test(navigator.connection.effectiveType || ''));
+
+  /* --- Le rideau de chargement -------------------------------------
+     Il est déjà à l'écran quand cette ligne s'exécute : le CSS l'affiche
+     d'emblée là où le navigateur sait exécuter du JavaScript. Tout ce qui
+     suit ne sert qu'à décider QUAND le lever, et à le redescendre au
+     départ vers la page suivante.
+
+     On attend quatre choses, et on ne les attend jamais longtemps :
+
+       — un délai minimum, sans quoi le rideau clignoterait sur une page
+         déjà en cache : un éclair noir est pire que pas de rideau ;
+       — les polices, sinon la page se découvre en Times New Roman et
+         change de graisse sous les yeux une demi-seconde plus tard ;
+       — les images déclarées prioritaires — celle du héros, en pratique ;
+       — la première image de la boucle vidéo de fond, quand il y en a
+         une. C'est elle, la raison d'être de ce rideau.
+
+     Chacune de ces attentes a sa propre limite, et l'ensemble a un
+     plafond : au-delà, on lève le rideau et le reste continue de charger
+     derrière. Faire attendre quelqu'un devant un écran fixe plus de
+     quatre secondes, c'est lui faire croire à une panne. */
+  /* Le minuteur de secours est armé ICI, avant toute autre chose, et il
+     ne dépend de rien : ni du rideau, ni d'une requête, ni d'une seule
+     ligne de ce qui suit. Si quoi que ce soit lève une exception plus
+     bas, c'est lui qui rendra la page. Le CSS a le sien, une seconde et
+     demie plus tard, pour le cas où ce fichier ne se charge pas du
+     tout. */
+  setTimeout(function () {
+    racine.classList.add('rideau-leve');
+  }, 4500);
+
+  var rideau = document.querySelector('[data-rideau-chargement]');
+  var leverRideau = function () {};
+
+  if (rideau) {
+    leverRideau = function () {
+      // On part vers une autre page : le rideau doit rester, et un lever
+      // programmé avant le clic n'a plus lieu d'être. Sans ce contrôle,
+      // un clic donné pendant le tout premier chargement découvrait la
+      // page en pleine navigation.
+      if (racine.classList.contains('va-partir')) return;
+      racine.classList.add('rideau-leve');
+    };
+
+    var uneFois = function (fn) {
+      var fait = false;
+      return function () {
+        if (fait) return;
+        fait = true;
+        fn();
+      };
+    };
+
+    // Un compteur, pas une promesse : le fichier n'en utilise nulle part
+    // ailleurs, et un navigateur sans « Promise » se retrouverait avec un
+    // rideau que rien ne lève.
+    var restant = 1; // la pose des attentes compte pour une
+    var uneDeMoins = function () {
+      restant--;
+      if (restant <= 0) leverRideau();
+    };
+    var attendre = function (poser, limite) {
+      restant++;
+      var fini = uneFois(uneDeMoins);
+      poser(fini);
+      if (limite) setTimeout(fini, limite);
+    };
+
+    // 1. le délai minimum
+    attendre(function (fini) {
+      setTimeout(fini, 420);
+    });
+
+    // 2. les polices
+    if (document.fonts && document.fonts.ready && document.fonts.ready.then) {
+      attendre(function (fini) {
+        document.fonts.ready.then(fini, fini);
+      }, 1800);
+    }
+
+    // 3. les images prioritaires — celles que le gabarit a marquées
+    //    « eager », c'est-à-dire l'image du héros et rien d'autre.
+    var prioritaires = document.querySelectorAll('img[fetchpriority="high"], img[loading="eager"]');
+    for (var ip = 0; ip < prioritaires.length; ip++) {
+      (function (im) {
+        if (im.complete) return;
+        attendre(function (fini) {
+          im.addEventListener('load', fini, { once: true });
+          im.addEventListener('error', fini, { once: true });
+        }, 2600);
+      })(prioritaires[ip]);
+    }
+
+    // 4. la boucle vidéo de fond de la première vue. Pas celles des
+    //    cartes : elles ne se chargent qu'au survol, et attendre un
+    //    survol qui n'aura peut-être jamais lieu n'a aucun sens.
+    var premiereVideo = document.querySelector('video[data-video]:not([data-survol])');
+    // Même condition que le chargement des boucles, plus bas : sans
+    // « IntersectionObserver », aucune vidéo ne reçoit jamais de source,
+    // et l'attente ci-dessous irait au bout de sa limite pour rien.
+    if (premiereVideo && !moinsDeMouvement && !economie && 'IntersectionObserver' in window) {
+      attendre(function (fini) {
+        if (premiereVideo.readyState >= 2) {
+          fini();
+          return;
+        }
+        premiereVideo.addEventListener('loadeddata', fini, { once: true });
+        premiereVideo.addEventListener('error', fini, { once: true });
+      }, 2600);
+    }
+
+    uneDeMoins(); // les attentes sont posées
+    // Plafond général, quoi qu'il arrive.
+    setTimeout(leverRideau, 4200);
+
+    // Quelqu'un vient d'appuyer sur Tab : il veut la page, pas l'écran
+    // d'attente. Sans cela, la bague de focus se promenait derrière le
+    // rideau, sur des liens que personne ne voyait.
+    document.addEventListener('focusin', leverRideau);
+
+    // Retour arrière, page restaurée depuis le cache du navigateur : la
+    // page est déjà là, complète, et le rideau serait une insulte.
+    window.addEventListener('pageshow', function (e) {
+      if (e.persisted) {
+        racine.classList.remove('va-partir');
+        racine.classList.add('rideau-leve');
+      }
+    });
+  }
+
 
   /* --- Menu mobile ------------------------------------------------ */
   var bascule = document.querySelector('.bandeau__bascule');
@@ -169,7 +303,23 @@
         window.matchMedia && window.matchMedia('(hover: hover) and (pointer: fine)').matches;
 
       if (avecSouris) {
+        // Une carte lancée au survol — ou à la mise au point au clavier —
+        // ne s'arrêtait que si la souris repassait dessus. Au clavier,
+        // elle n'en repartait jamais : on tabulait, on faisait défiler, et
+        // la vidéo continuait de se décoder trois écrans plus haut. Ce
+        // guetteur ne lance rien, il ne fait qu'arrêter ce qui a quitté
+        // l'écran.
+        var obsSortie = new IntersectionObserver(
+          function (entrees) {
+            entrees.forEach(function (e) {
+              if (!e.isIntersecting) arreterBoucle(e.target, true);
+            });
+          },
+          { rootMargin: '100px 0px' }
+        );
+
         cartes.forEach(function (v) {
+          obsSortie.observe(v);
           // Le cadre écouté est la carte entière, et non la vidéo : la
           // vidéo ne reçoit aucun événement de pointeur, et c'est voulu —
           // c'est le lien qui doit rester cliquable de bout en bout.
@@ -254,25 +404,44 @@
       // que le clic a été pris. Il ne se referme jamais tout seul — une
       // page lente prolonge donc l'attente au lieu de la couper.
       if (!transitionsDeDocument && !moinsDeMouvement) racine.classList.add('part');
+      // Le rideau redescend : c'est lui qui couvre l'attente, et c'est
+      // lui qui sera déjà à l'écran quand la page suivante se peindra.
+      // Les deux images — celle qu'on quitte et celle qui arrive —
+      // portent alors le même rideau : la jointure ne se voit pas.
+      racine.classList.add('va-partir');
       minuteur = setTimeout(function () {
         fil.classList.remove('actif');
         void fil.offsetWidth; /* redémarre l'animation */
         fil.classList.add('actif');
       }, 180);
-      // Garde-fou : si la navigation n'a finalement pas lieu — lien
-      // annulé, réponse sans contenu, clic sur Échap — rien ne viendrait
-      // rendre la page à son état normal. Au bout de quinze secondes,
-      // on la rend quoi qu'il arrive.
+      // Garde-fou : si la navigation n'a finalement pas lieu — lien vers
+      // un fichier à télécharger, réponse sans contenu, navigation
+      // interrompue — rien ne viendrait rendre la page à son état normal.
+      // Le délai était de quinze secondes, ce qui était supportable pour
+      // un fil de deux pixels en haut de l'écran ; depuis que le rideau
+      // couvre tout, quinze secondes de noir, c'est une panne. Neuf
+      // secondes, et la touche Échap rend la page tout de suite.
       clearTimeout(plafond);
       plafond = setTimeout(function () {
         desarmer();
-      }, 15000);
+      }, 9000);
     };
     var desarmer = function () {
       clearTimeout(minuteur);
       clearTimeout(plafond);
       fil.classList.remove('actif');
       racine.classList.remove('part');
+      // La navigation n'a pas eu lieu : on rend la page, rideau compris.
+      //
+      // Et seulement dans ce cas : cette fonction est aussi appelée à
+      // chaque « pageshow », donc à chaque chargement de page. Elle posait
+      // « rideau-leve » sans condition — le rideau se levait donc au
+      // premier souffle, avant d'avoir attendu quoi que ce soit, et tout
+      // ce fichier ne servait plus à rien.
+      if (racine.classList.contains('va-partir')) {
+        racine.classList.remove('va-partir');
+        racine.classList.add('rideau-leve');
+      }
     };
 
     document.addEventListener('click', function (e) {
@@ -304,6 +473,13 @@
     // Formulaires : l'envoi du contact peut prendre une seconde.
     document.addEventListener('submit', function (e) {
       if (!e.defaultPrevented) armer();
+    });
+
+    // Échap : on renonce. C'est le geste de quelqu'un qui a cliqué par
+    // erreur, ou que l'attente inquiète — dans les deux cas, lui rendre
+    // sa page immédiatement est la seule réponse acceptable.
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') desarmer();
     });
 
     // Retour arrière, page restaurée depuis le cache, navigation annulée :

@@ -11,6 +11,7 @@ import {
   identifiantYoutube,
   lienSur,
   REGLAGES_LIENS,
+  COLONNES_LIEN,
   CATEGORIES,
 } from '../../../lib/admin';
 
@@ -56,8 +57,14 @@ export const POST: APIRoute = async ({ request, redirect, locals }) => {
       // et le champ revenait vide sans un mot — ce qui donne l'impression
       // que le site a perdu la saisie. On refuse l'enregistrement entier et
       // on le dit : rien n'est écrit, la saisie est encore dans la page.
-      if (champs.url === '' && String(f.get('c_url') ?? '').trim() !== '') {
-        return sur('err=lien');
+      //
+      // Le contrôle porte sur TOUTES les colonnes-adresses, et non sur la
+      // seule « url » : « lien_url », celle d'un écran d'accueil, se
+      // vidait en silence — le défaut même que ces lignes corrigent.
+      for (const col of COLONNES_LIEN) {
+        if (champs[col] === '' && String(f.get(`c_${col}`) ?? '').trim() !== '') {
+          return sur('err=lien');
+        }
       }
 
       if (table === 'projets') {

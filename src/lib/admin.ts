@@ -66,7 +66,7 @@ export const CHAMPS: Record<string, string[]> = {
  * HTML n'y change rien — il protège la structure de la page, pas le
  * schéma d'une URL.
  */
-const LIENS = new Set(['url', 'lien_url']);
+export const COLONNES_LIEN = new Set(['url', 'lien_url']);
 
 /**
  * Les réglages qui sont des adresses. Même raison que ci-dessus, et le
@@ -137,7 +137,7 @@ export function champsAutorises(table: string, data: FormData): Record<string, a
     if (NUMERIQUES.has(col)) {
       const s = String(brut ?? '').trim();
       sortie[col] = s === '' ? null : Number(s) || 0;
-    } else if (LIENS.has(col)) {
+    } else if (COLONNES_LIEN.has(col)) {
       sortie[col] = lienSur(brut);
     } else {
       sortie[col] = nettoyer(brut, col === 'corps' || col === 'reponse' || col === 'texte' ? 8000 : 2000);
@@ -257,7 +257,12 @@ export function cheminInterne(valeur: unknown, defaut = '/admin'): string {
   // fait échouer la construction de la réponse, et l'administrateur reçoit
   // une erreur 500 au lieu d'une redirection. On encode plutôt que de
   // refuser — un chemin peut légitimement contenir des accents.
-  return encodeURI(v.slice(0, 300));
+  //
+  // Mais on n'encode que ce qui en a besoin : « encodeURI » appliqué à un
+  // chemin DÉJÀ encodé encodait le signe pour cent lui-même, et
+  // « /%2Fa » devenait « /%252Fa » — un chemin abîmé à chaque passage.
+  const chemin = v.slice(0, 300);
+  return /^[\u0021-\u007E]*$/.test(chemin) ? chemin : encodeURI(chemin);
 }
 
 /**

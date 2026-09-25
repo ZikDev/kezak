@@ -5,6 +5,7 @@ import '../styles/base.css';
 // transitions de page du site public.
 import '../styles/transitions.css';
 import Bandeau from '../components/Bandeau.astro';
+import RideauChargement from '../components/RideauChargement.astro';
 import PiedDePage from '../components/PiedDePage.astro';
 import { tousReglages } from '../lib/db';
 
@@ -82,6 +83,13 @@ const url = new URL(Astro.url.pathname + Astro.url.search, domaine).href;
   </head>
   <body>
     <a class="evitement" href="#contenu">Aller au contenu</a>
+    {/*
+      Le rideau vient avant tout le reste : il est déjà là quand la page
+      se peint pour la première fois, et il se lève quand elle est prête.
+      Placé plus bas, on aurait vu le contenu une fraction de seconde
+      avant qu'il ne le recouvre — le contraire de ce qu'on cherche.
+    */}
+    <RideauChargement />
     <div class="fil" aria-hidden="true"></div>
     <Bandeau differe={bandeauDifferre} actif={actif} />
     <main id="contenu">
