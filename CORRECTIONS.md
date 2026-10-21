@@ -1,5 +1,114 @@
 # Ce qui a été corrigé
 
+## Version 6.5 — les intitulés, le document PDF
+
+### 1. Les intitulés des métadonnées se changent projet par projet
+
+Les quatre cases sous le héros d'une fiche projet portaient des intitulés
+fixes : « Mon rôle », « Réalisation », « Production », « Diffusion ».
+Justes pour un film, faux pour une publication ou une exposition.
+
+Dans la section **02** de la fiche, chaque case a maintenant deux champs,
+l'intitulé et le contenu. Vide, l'intitulé reprend celui par défaut,
+affiché en gris dans le champ ; les valeurs par défaut sont réunies dans
+`src/lib/textes.mjs`. 40 caractères au plus, retours à la ligne retirés.
+
+### 2. Un document PDF sur la fiche projet
+
+Section **07** de l'admin, affichée sur la page juste avant la galerie.
+Un PDF par projet, avec un titre de section facultatif (« Dossier de
+presse »), envoyé depuis la fiche ou choisi dans la médiathèque.
+
+Sur la page, le document est **lu par le site lui-même**, avec pdf.js
+(Mozilla, copié dans `public/vendor/pdfjs/`) : Chrome sur Android, par
+exemple, ne sait pas afficher un PDF dans une page. Les pages se dessinent
+les unes sous les autres dans un cadre qui défile ; le texte est
+sélectionnable et cherchable ; un compteur dit où l'on est ; plein écran
+là où le navigateur le permet ; et un bouton **Télécharger** toujours
+présent, même sans JavaScript.
+
+### 3. Ce que la base a dû apprendre
+
+Migration **3**, automatique au redémarrage : six colonnes ajoutées à
+`projets` (quatre intitulés, `pdf_id`, `pdf_titre`). Rien n'est modifié
+ni supprimé ; un PDF retiré de la médiathèque vide simplement la section.
+Testée sur une copie de la base 6.4 et sur une base neuve.
+
+## L'audit de la version 6.5
+
+Un lecteur de documents, c'est du code qui interprète des fichiers venus
+d'ailleurs. Relecture adverse, avec des PDF piégés fabriqués pour
+l'occasion. Ce qui a été trouvé et corrigé :
+
+**Sécurité**
+
+- **Le JavaScript d'un PDF** (actions à l'ouverture, champs calculés) :
+  jamais exécuté. Vérifié aussi contre la police piégée de la faille
+  CVE-2024-4367, qui touchait les anciennes versions de pdf.js.
+- **Les liens du PDF** ne sont pas rendus cliquables : un lien
+  `javascript:` glissé dans un document, cliqué sur notre domaine, aurait
+  agi avec la session de l'administrateur. Ils restent actifs dans le
+  fichier téléchargé.
+- **Ouvert directement**, un PDF passait par le lecteur du navigateur,
+  sous l'adresse du site. Il est maintenant servi en téléchargement.
+- **Bombe de décompression** : une image de 20 000 × 20 000 pixels tenait
+  dans 1,2 Mo et réclamait 1,6 Go de mémoire. Le décodage est plafonné.
+- **Une page très haute** demandait une toile de 170 millions de pixels ;
+  Safari sur iPhone la laissait blanche. Plafonnée à 16,7 millions.
+- **Un PDF en héros** : rien n'empêchait de rattacher un document au
+  héros, une image à la boucle vidéo. Le genre est contrôlé à l'envoi et
+  à l'enregistrement, et `npm run verif` vérifie que la règle couvre
+  chaque colonne concernée.
+- **Les envois de fichiers** étaient acceptés sur toutes les routes de
+  l'admin, et un envoi « en morceaux » échappait au plafond de taille.
+  Ils ne sont plus acceptés que sur la route de téléversement.
+- `rattacher=constructor` faisait tomber la route en erreur 500 ; une
+  erreur au milieu d'un enregistrement laissait la moitié des champs
+  écrits. Les deux sont corrigés (une `Map`, une transaction).
+- Les demandes de plages d'octets suivent maintenant la norme HTTP à la
+  lettre : `bytes=-500` voulait dire « les 500 premiers », ce sont les
+  500 derniers.
+
+**Données mobiles et mémoire**
+
+- pdf.js téléchargeait **tout le fichier** à l'ouverture : 29 Mo pour
+  regarder la couverture d'un dossier de 22 Mo. Il ne lit plus que les
+  pages affichées — **4 Mo** pour le même document, dont une bonne part
+  est la lecture de l'en-tête de chaque page, réduite en lisant par
+  morceaux de 16 Ko plutôt que 64.
+- Le texte de tout le document était extrait en tâche de fond, ce qui
+  revenait à retélécharger le fichier entier. Il ne l'est plus que pour
+  les documents de 8 Mo au plus ; au-delà, chaque page reçoit son texte
+  quand on y passe.
+- Les pages éloignées de l'écran rendent leur mémoire (toile et cache de
+  pdf.js) : la consommation ne monte plus de page en page.
+
+**Lecture**
+
+- Le texte des pages quittées disparaissait avec leur dessin : Ctrl+F et
+  les lecteurs d'écran ne trouvaient que les pages proches. Il reste.
+- Après un changement de largeur (rotation du téléphone, plein écran),
+  on revient à la page et au passage qu'on lisait.
+- Couche de texte décalée sur les PDF qui déclarent une unité de page
+  (`/UserUnit`), noms annoncés deux fois par les lecteurs d'écran, bouton
+  plein écran visible sur iPhone où il ne fait rien, « PDF· 35 Ko » sans
+  espace : corrigés.
+- Un emoji coupé en deux par la limite de longueur d'un champ laissait un
+  caractère invalide dans la base. Corrigé pour tous les champs.
+
+**Responsive** : vérifié de 320 px à 1 440 px de large, aucun débordement
+horizontal ; sur téléphone, le cadre prend presque toute la hauteur de
+l'écran et les boutons passent sous le compteur, en pleine largeur ; la
+densité de dessin est plafonnée à 2 même sur un écran ×3.
+
+**Ce qui n'a pas pu être fait ici** : comme pour les versions
+précédentes, `npm install` et `npm run build` n'ont pas pu tourner dans
+l'environnement de travail (registre npm inaccessible). Le code a été
+vérifié autrement — vérification des types, des balises, `npm run verif`,
+et le lecteur testé dans un vrai navigateur avec la vraie politique de
+sécurité. **Lancez `npm run verif` puis `npm run dev` avant de mettre en
+ligne.**
+
 ## Version 6.4 — le rideau de chargement
 
 Une fiche projet tire maintenant une boucle vidéo de plusieurs

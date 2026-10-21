@@ -1,0 +1,276 @@
+---
+/**
+ * La section « document » d'une fiche projet : un PDF lu sur la page.
+ *
+ * Trois étages, pour que le document reste accessible quoi qu'il arrive :
+ *
+ *   — sans JavaScript, ou sur un navigateur trop ancien : le lien de
+ *     téléchargement, et rien d'autre. Il est toujours là ;
+ *   — avec : un cadre où les pages se dessinent les unes sous les autres,
+ *     comme posées sur une table lumineuse, avec une couche de texte
+ *     sélectionnable — c'est elle que lit un lecteur d'écran ;
+ *   — et là où le navigateur le permet, le plein écran.
+ *
+ * Les éléments créés par le script — pages, toiles, couche de texte — ne
+ * portent pas l'attribut de portée qu'Astro ajoute aux éléments écrits
+ * ici : leurs styles sont donc déclarés en « :global() ».
+ */
+interface Props {
+  src: string;
+  titre: string;
+  octets?: number | null;
+  /** Le nom du fichier téléchargé, sans extension. */
+  nomFichier: string;
+}
+const { src, titre, octets = null, nomFichier } = Astro.props;
+
+// « 2,4 Mo » et non « 2.4 Mo » : le site est en français.
+const poids =
+  octets && octets > 0
+    ? octets >= 1048576
+      ? `${(octets / 1048576).toFixed(1).replace('.', ',')} Mo`
+      : `${Math.max(1, Math.round(octets / 1024))} Ko`
+    : '';
+---
+
+{/*
+  Pas d'« aria-label » sur la section : le cadre porte déjà le nom du
+  document, et deux régions imbriquées au même nom se faisaient annoncer
+  deux fois de suite.
+*/}
+<section class="pdf" data-pdf data-src={src} data-titre={titre} data-octets={octets ?? undefined}>
+  {/*
+    « hidden » : c'est le script qui le montre. Sans lui, un cadre vide
+    afficherait « Chargement… » pour toujours.
+  */}
+  <div class="pdf__cadre" tabindex="0" role="region" aria-label={titre} data-cadre hidden>
+    <p class="pdf__etat mono" data-etat>Chargement du document…</p>
+  </div>
+
+  <div class="pdf__barre">
+    <p class="pdf__compteur mono" data-compteur></p>
+    <div class="pdf__actions">
+      <button class="bouton pdf__plein" type="button" aria-pressed="false" data-plein-ecran hidden>
+        Plein écran
+      </button>
+      {/*
+        « download » : le fichier est enregistré, jamais ouvert dans un
+        nouvel onglet. Selon le navigateur, l'ouvrir passait par un lecteur
+        intégré, un écran blanc ou une page de téléchargement ; enregistré,
+        il s'ouvre partout de la même façon, dans le logiciel du visiteur.
+        Le script du site ne baisse pas le rideau de chargement sur un lien
+        de ce genre, puisqu'on ne quitte pas la page.
+      */}
+      <a class="bouton bouton--plein" href={src} download={`${nomFichier}.pdf`}>
+        Télécharger le PDF{poids && <span class="pdf__poids">&nbsp;· {poids}</span>}
+      </a>
+    </div>
+  </div>
+</section>
+
+<script type="module" src="/js/lecteur-pdf.js" is:inline></script>
+
+<style>
+  .pdf {
+    display: flex;
+    flex-direction: column;
+    gap: var(--e-3);
+  }
+
+  /* La table lumineuse : un fond un ton plus soutenu que la planche, sur
+     lequel les pages blanches se détachent sans ombre ni filet. */
+  .pdf__cadre {
+    --h-cadre: clamp(22rem, 78vh, 62rem);
+    /* Positionné : la position d'une page dans le cadre devient
+       directement une position de défilement — c'est ce qui permet au
+       script de revenir à l'endroit où l'on lisait après un changement de
+       largeur. */
+    position: relative;
+    height: var(--h-cadre);
+    overflow-y: auto;
+    overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--e-3);
+    padding: var(--e-3);
+    background: var(--filet);
+    /* Le cadre se fait défiler au doigt sans retenir la page : arrivé au
+       bout du document, le geste continue sur la page. C'est le
+       comportement par défaut, et il est voulu. */
+  }
+  @supports (height: 1svh) {
+    .pdf__cadre {
+      --h-cadre: clamp(22rem, 78svh, 62rem);
+    }
+  }
+  .pdf__cadre[hidden] {
+    display: none;
+  }
+  .pdf__cadre:focus-visible {
+    outline-offset: -3px;
+  }
+
+  .pdf__etat {
+    margin: auto;
+    color: var(--texte-doux);
+    text-align: center;
+    max-width: var(--mesure);
+  }
+
+  /* --- Les pages, créées par le script ------------------------------ */
+  .pdf__cadre :global(.pdf__page) {
+    /* Une page de 84 rem de large se lirait de loin et défilerait
+       pendant des écrans entiers. 48 rem, c'est un A4 tenu à bout de bras. */
+    width: min(100%, 48rem);
+    flex-shrink: 0;
+    position: relative;
+    background: var(--papier);
+    /* Ce dont la couche de texte de pdf.js a besoin pour se caler sur la
+       page : l'échelle est posée par le script, page par page. */
+    --scale-factor: 1;
+    --user-unit: 1;
+    --total-scale-factor: calc(var(--scale-factor) * var(--user-unit));
+    --scale-round-x: 1px;
+    --scale-round-y: 1px;
+  }
+  .pdf__cadre :global(.pdf__page canvas) {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* --- La couche de texte -------------------------------------------
+     Reprise de la feuille de style de pdf.js (web/pdf_viewer.css, licence
+     Apache 2.0), réduite à ce que ce lecteur utilise : pas de surlignage,
+     pas d'outils d'annotation. Le texte est transparent — on voit la
+     toile, on sélectionne le texte. */
+  .pdf__cadre :global(.textLayer) {
+    position: absolute;
+    text-align: initial;
+    inset: 0;
+    overflow: clip;
+    opacity: 1;
+    line-height: 1;
+    letter-spacing: normal;
+    word-spacing: normal;
+    -webkit-text-size-adjust: none;
+    text-size-adjust: none;
+    forced-color-adjust: none;
+    transform-origin: 0 0;
+    caret-color: CanvasText;
+    z-index: 0;
+    --min-font-size: 1;
+    --text-scale-factor: calc(var(--total-scale-factor) * var(--min-font-size));
+    --min-font-size-inv: calc(1 / var(--min-font-size));
+  }
+  .pdf__cadre :global(.textLayer span),
+  .pdf__cadre :global(.textLayer br) {
+    color: transparent;
+    position: absolute;
+    white-space: pre;
+    cursor: text;
+    transform-origin: 0% 0%;
+    -webkit-user-select: text;
+    user-select: text;
+  }
+  .pdf__cadre :global(.textLayer > :not(.markedContent)),
+  .pdf__cadre :global(.textLayer .markedContent span:not(.markedContent)) {
+    z-index: 1;
+    --font-height: 0;
+    font-size: calc(var(--text-scale-factor) * var(--font-height));
+    --scale-x: 1;
+    --rotate: 0deg;
+    transform: rotate(var(--rotate)) scaleX(var(--scale-x)) scale(var(--min-font-size-inv));
+  }
+  .pdf__cadre :global(.textLayer .markedContent) {
+    display: contents;
+  }
+  .pdf__cadre :global(.textLayer ::selection) {
+    background: rgba(15, 107, 85, 0.28); /* réactif profond, à 28 % */
+    color: transparent;
+  }
+  .pdf__cadre :global(.textLayer br::selection) {
+    background: transparent;
+  }
+  .pdf__cadre :global(.textLayer .endOfContent) {
+    display: block;
+    position: absolute;
+    inset: 100% 0 0;
+    z-index: 0;
+    cursor: default;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  .pdf__cadre :global(.textLayer.selecting .endOfContent) {
+    top: 0;
+  }
+
+  /* --- La barre sous le cadre --------------------------------------- */
+  .pdf__barre {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--e-3);
+  }
+  .pdf__compteur {
+    margin: 0;
+    color: var(--texte-doux);
+    letter-spacing: var(--ls-etiquette);
+    font-size: var(--t-100);
+    /* Réservée même vide : sans hauteur, la barre sautait d'une ligne au
+       moment où le compteur apparaissait. */
+    min-height: 1lh;
+  }
+  .pdf__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--e-2);
+  }
+  /* L'espace avant le point est insécable : dans un bouton en
+     « inline-flex », le texte et ce morceau deviennent deux éléments
+     distincts, et l'espace ordinaire en début d'élément disparaît —
+     on lisait « PDF· 35 Ko ». */
+  .pdf__poids {
+    opacity: 0.8;
+  }
+  /* « .bouton » pose un « display: inline-flex » qui l'emporte sur
+     l'attribut « hidden » : sans cette règle, le bouton plein écran
+     s'affichait aussi sur iPhone, où il ne fait rien. */
+  .pdf__plein[hidden] {
+    display: none;
+  }
+
+  /* --- Plein écran ----------------------------------------------------
+     La section passe au premier plan avec sa barre : on garde le numéro
+     de page et le téléchargement sous la main. */
+  .pdf:fullscreen {
+    background: var(--fond);
+    padding: var(--e-4);
+    gap: var(--e-3);
+  }
+  .pdf:fullscreen .pdf__cadre {
+    flex: 1;
+    height: auto;
+  }
+  .pdf:fullscreen .pdf__cadre :global(.pdf__page) {
+    width: min(100%, 64rem);
+  }
+
+  /* Sur un téléphone : moins de marge autour des pages — chaque pixel de
+     largeur est un pixel de texte en plus. */
+  @media (max-width: 47.99rem) {
+    .pdf__cadre {
+      padding: var(--e-2);
+      gap: var(--e-2);
+    }
+    .pdf__barre {
+      flex-direction: column;
+      align-items: stretch;
+    }
+    .pdf__actions :global(.bouton) {
+      justify-content: center;
+    }
+  }
+</style>

@@ -145,7 +145,12 @@ async function corpsBorne(request: Request, plafond: number): Promise<string | n
       if (done) break;
       total += value.byteLength;
       if (total > plafond) {
-        await lecteur.cancel();
+        // Sans « await » : sur une copie de requête (« clone() »), l'annulation
+        // ne se termine que lorsque l'autre copie est annulée elle aussi —
+        // ce qui n'arrive jamais ici. Attendue, elle ne rendait jamais la
+        // main : le refus 413 n'était jamais envoyé, et la connexion restait
+        // pendue.
+        lecteur.cancel().catch(() => {});
         return null;
       }
       morceaux.push(value);
@@ -310,6 +315,15 @@ export const onRequest = defineMiddleware(async (context, next) => {
       // Origin, envoyé par tous les navigateurs sur un POST, suffit — et il
       // devient obligatoire dans ce cas précis.
       if (!origine) return refus(new Response('Origine absente', { status: 403 }));
+      // Et il n'a qu'un destinataire légitime : la route de téléversement,
+      // réservée à l'administrateur connecté, qui vérifie la session avant
+      // de lire le moindre octet. Ailleurs — le formulaire de contact, la
+      // connexion —, un envoi multipart échappait à tout plafond dès qu'il
+      // ne déclarait pas sa taille : 200 Mo envoyés par morceaux, avec une
+      // origine forgée, et la route les lisait en entier avant de répondre.
+      if (url.pathname !== '/admin/api/televerser') {
+        return refus(new Response('Type de contenu refusé', { status: 415 }));
+      }
     } else {
       /**
        * Tout le reste exige le jeton — et « tout le reste » veut bien dire

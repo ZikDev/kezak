@@ -388,7 +388,7 @@ dans l'admin comme on descend sur le site.
 
 ## La galerie d'un projet
 
-Section **06** de la fiche projet. Trois façons d'ajouter une vue, côte à
+Section **08** de la fiche projet. Trois façons d'ajouter une vue, côte à
 côte :
 
 | Entrée | Quand s'en servir |
@@ -426,9 +426,56 @@ Tout le reste est refusé, et l'enregistrement s'arrête avec un message :
 rien n'est écrit, votre saisie est encore dans la page. C'est volontaire —
 une adresse est la seule chose qu'un visiteur suit sans la lire.
 
+## Les intitulés des métadonnées
+
+Section **02** de la fiche projet. Les quatre cases sous le héros —
+« Mon rôle », « Réalisation », « Production », « Diffusion » — ont chacune
+deux champs : l'**intitulé** et le **contenu**. Laissez l'intitulé vide
+pour garder celui par défaut (il est affiché en gris dans le champ) ;
+écrivez « Édition », « Commanditaire » ou « Exposition » pour un projet qui
+n'est pas un film. 40 caractères au plus. Une case dont le contenu est vide
+ne s'affiche pas, quel que soit son intitulé.
+
+Les intitulés par défaut se changent pour tout le site dans
+`src/lib/textes.mjs` (`INTITULES_META`).
+
+## Le document PDF d'un projet
+
+Section **07** de la fiche projet, affiché sur la page juste avant la
+galerie : un dossier de presse, une plaquette, un mémoire. Un seul par
+projet.
+
+- **Ajouter** : choisissez le fichier dans « Envoyer un PDF », donnez
+  éventuellement un titre à la section (« Dossier de presse » ; vide, ce
+  sera « Document »), envoyez. Il est rattaché tout de suite.
+- **Remplacer** : envoyez-en un autre ; l'ancien reste dans la médiathèque.
+- **Retirer** : choisissez « — aucun — » dans la liste et enregistrez.
+- **Réutiliser** un PDF déjà envoyé : choisissez-le dans la même liste.
+
+Sur la page, les pages du document se dessinent les unes sous les
+autres dans un cadre qui défile, avec un compteur, un bouton plein écran
+(sauf sur iPhone, qui ne le permet pas) et un bouton **Télécharger**. Le
+texte est sélectionnable et se cherche avec Ctrl+F.
+
+Ce qu'il faut savoir :
+
+| | |
+| --- | --- |
+| Poids maximal | **25 Mo**. Pour un document plus lourd, réduisez-le à l'export (« PDF pour le web », images à 150 dpi) |
+| Format conseillé | export « optimisé pour le web » (linéarisé) : la première page s'affiche avant que le reste soit lu |
+| Mot de passe | un PDF protégé ne s'affiche pas — il n'y a aucune raison d'en publier un |
+| Liens et formulaires du PDF | **pas cliquables sur la page**, volontairement : un lien piégé glissé dans un document s'exécuterait sous l'adresse du site. Ils fonctionnent dans le fichier téléchargé |
+| Téléphone | les pages sont lisibles mais petites ; le bouton Télécharger ouvre le document dans le lecteur du téléphone |
+| Gros documents | au-delà de 150 pages ou de 8 Mo, seul le texte des pages parcourues est cherchable avec Ctrl+F |
+| Données mobiles | seules les pages regardées sont téléchargées, pas le fichier entier |
+
+Le lecteur, c'est **pdf.js** (Mozilla), copié dans `public/vendor/pdfjs/`.
+Il se met à jour comme une dépendance de sécurité : la marche à suivre est
+dans `public/vendor/pdfjs/LISEZMOI.txt`.
+
 ## Les crédits
 
-Section **08**. Qui a fait quoi : générique d'un film, colophon d'une
+Section **09**. Qui a fait quoi : générique d'un film, colophon d'une
 publication, équipe d'un site. Cochez « c'est moi » pour souligner votre
 nom, et ajoutez une adresse pour que le nom renvoie vers le portfolio de
 la personne.
@@ -529,6 +576,11 @@ l'apparence, le bloc « Le rideau de chargement » en tête de
 | Une image de galerie est en noir et blanc | elle a été envoyée avant la version 6, ou reprise depuis la médiathèque. Renvoyez le fichier depuis la section galerie |
 | « Cette adresse n'a pas été acceptée » | l'adresse ne commence ni par `https://`, ni par `mailto:`, ni par une barre oblique. Rien n'a été enregistré : corrigez le champ et renvoyez |
 | « Cette rubrique n'est pas modifiable » | une table manque dans l'une des deux listes blanches (`CHAMPS` dans `src/lib/admin.ts`, `TABLES_ADMIN` dans `src/lib/db.ts`). `npm run verif` le dit maintenant |
+| « Ce document ne peut pas s'afficher ici » sur tous les PDF | `public/vendor/pdfjs/` manque sur le serveur : le dossier `public/vendor/` n'a pas été copié ou poussé. Le bouton Télécharger, lui, fonctionne toujours |
+| Le même message sur un seul PDF | le fichier est abîmé. Ouvrez-le sur votre ordinateur, réexportez-le, renvoyez-le |
+| « Ce document est protégé par un mot de passe » | réexportez-le sans protection |
+| « Ce fichier n'est pas du bon type pour cet emplacement » | une image envoyée comme PDF, ou l'inverse. Le type est reconnu aux octets du fichier, pas à son extension |
+| Un intitulé de métadonnée ne change pas | le contenu de la case est vide : une case vide ne s'affiche pas |
 | `database is locked` dans un script | un autre processus écrivait au même instant ; les scripts attendent cinq secondes, relancez |
 
 ---
@@ -551,7 +603,9 @@ l'apparence, le bloc « Le rideau de chargement » en tête de
 | XSS | échappement automatique d'Astro, aucun `set:html` sur du contenu de la base |
 | En-têtes | CSP stricte en production, HSTS, `nosniff`, `Referrer-Policy`, `Permissions-Policy`, `frame-ancestors 'none'` |
 | Formulaire public | pot de miel et délai minimal de remplissage, plutôt qu'un captcha inaccessible ; nom, organisation et adresse nettoyés de tout retour à la ligne avant de partir dans un en-tête de courriel |
-| Taille des requêtes | plafond sur `Content-Length` avant toute lecture du corps : 512 Ko, 80 Mo sur la route de téléversement |
+| Taille des requêtes | plafond sur `Content-Length` avant toute lecture du corps : 512 Ko, 80 Mo sur la route de téléversement ; les envois de fichiers (`multipart`) ne sont acceptés que sur cette route |
+| PDF | lus par pdf.js sans JavaScript, sans WebAssembly, sans liens ni formulaires actifs ; décodage d'image plafonné (bombes de décompression) ; servis en `Content-Disposition: attachment`, jamais ouverts dans un onglet sous l'adresse du site |
+| Rattachements | une image ne peut pas devenir la boucle vidéo, ni un PDF le héros ou une vue de galerie : le genre est contrôlé à l'envoi **et** à l'enregistrement |
 | Force brute, 3ᵉ garde | un compteur global de 100 échecs par quart d'heure, qui tient même si l'adresse d'origine n'est pas fiable |
 | Messages d'erreur | seuls des codes transitent dans l'URL ; les phrases viennent d'une table (`MESSAGES` dans `src/lib/admin.ts`). Ni fuite du schéma, ni texte arbitraire affiché dans l'interface |
 | Images | plafond de 50 Mpx à l'entrée de sharp ; le SVG n'est pas un format accepté |
@@ -571,7 +625,7 @@ src/
     media/          sert les fichiers téléversés
     api/contact.ts  réception du formulaire
   components/       Bandeau, Media, VideoFond, BoucleVideo, FacadeYoutube,
-                    Carrousel, RideauChargement, Grain, Lignes
+                    Carrousel, RideauChargement, LecteurPdf, Grain, Lignes
   layouts/          Base (site), Admin (back-office)
   lib/              db, auth, media, admin, motdepasse, schema, env,
                     migrations (transforme une base déjà remplie),
@@ -619,6 +673,7 @@ Les migrations livrées à ce jour :
 | --- | --- | --- |
 | 1 | 6 | la galerie accepte les vidéos YouTube (`media_id` devient facultatif) |
 | 2 | 6.2 | un lien par ligne de crédits, et la mention en marge passe de `generique_note` à `credits_note` |
+| 3 | 6.5 | les intitulés modifiables des quatre métadonnées, et le document PDF d'un projet (`role_titre`, `realisation_titre`, `production_titre`, `diffusion_titre`, `pdf_id`, `pdf_titre`) |
 
 ---
 

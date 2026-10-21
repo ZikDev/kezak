@@ -35,6 +35,12 @@ export const CHAMPS: Record<string, string[]> = {
     'realisation',
     'production',
     'diffusion',
+    'role_titre',
+    'realisation_titre',
+    'production_titre',
+    'diffusion_titre',
+    'pdf_id',
+    'pdf_titre',
     'citation',
     'citation_qui',
     'note',
@@ -45,7 +51,11 @@ export const CHAMPS: Record<string, string[]> = {
   projet_faits: ['etiquette', 'valeur'],
   projet_credits: ['poste', 'noms', 'cest_moi', 'url'],
   projet_liens: ['libelle', 'url', 'note'],
-  projet_medias: ['legende', 'large', 'media_id'],
+  // « media_id » n'est pas modifiable ici : une vue de galerie change de
+  // fichier en étant supprimée puis ajoutée. Modifiable, il pouvait être
+  // vidé par une requête forgée — la vue devenait alors invisible sur le
+  // site ET dans l'admin, donc impossible à supprimer.
+  projet_medias: ['legende', 'large'],
   // « youtube » n'est volontairement pas ici : sa valeur est validée par
   // la route dédiée, pas reprise telle quelle depuis un formulaire.
   prestations: ['titre', 'meta', 'corps'],
@@ -88,7 +98,38 @@ const NUMERIQUES = new Set([
   'en_avant',
   'cest_moi',
   'large',
+  'pdf_id',
 ]);
+
+/**
+ * Longueur maximale des colonnes courtes. Le plafond par défaut — 2000
+ * caractères — est fait pour un paragraphe ; un intitulé de case qui en
+ * ferait 2000 casserait la bande sous le héros, et le champ de l'admin
+ * le limite déjà à 40. Le serveur, lui, ne fait confiance à aucun champ.
+ */
+const LONGUEURS: Record<string, number> = {
+  role_titre: 40,
+  realisation_titre: 40,
+  production_titre: 40,
+  diffusion_titre: 40,
+  pdf_titre: 80,
+};
+
+/**
+ * Le genre de média que chaque colonne peut désigner.
+ *
+ * Les listes de l'admin ne proposent que le bon genre, mais une liste
+ * n'empêche rien : un identifiant forgé posait une image dans la boucle
+ * vidéo, ou un PDF en héros, et la page publique affichait alors un
+ * lecteur vidéo vide ou une image cassée. Le serveur vérifie.
+ */
+export const GENRE_DES_COLONNES: Record<string, Record<string, readonly string[]>> = {
+  projets: { hero_id: ['image'], video_fond_id: ['video'], pdf_id: ['pdf'] },
+  accueil_ecrans: { media_id: ['image'], video_id: ['video'] },
+};
+export const GENRE_DES_REGLAGES: Record<string, readonly string[]> = {
+  portrait_id: ['image'],
+};
 
 /** Les réglages modifiables depuis /admin/general et les pages de contenu. */
 export const REGLAGES_AUTORISES = new Set([
@@ -140,7 +181,10 @@ export function champsAutorises(table: string, data: FormData): Record<string, a
     } else if (COLONNES_LIEN.has(col)) {
       sortie[col] = lienSur(brut);
     } else {
-      sortie[col] = nettoyer(brut, col === 'corps' || col === 'reponse' || col === 'texte' ? 8000 : 2000);
+      const max = LONGUEURS[col] ?? (col === 'corps' || col === 'reponse' || col === 'texte' ? 8000 : 2000);
+      // Un intitulé ne contient pas de retour à la ligne : il finit dans une
+      // case d'une ligne, et dans le nom du fichier téléchargé.
+      sortie[col] = col in LONGUEURS ? nettoyerLigne(brut, max) : nettoyer(brut, max);
     }
   }
   // Les cases à cocher n'envoient rien quand elles sont décochées.
@@ -159,7 +203,10 @@ export function nettoyer(v: unknown, max = 2000): string {
     // un journal. On garde \n et \t, on retire le reste.
     .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '')
     .trim()
-    .slice(0, max);
+    .slice(0, max)
+    // Couper au milieu d'un émoji laisse la première moitié d'une paire de
+    // substitution, qui s'affiche « � ». On la retire.
+    .replace(/[\uD800-\uDBFF]$/, '');
 }
 
 /**
@@ -324,10 +371,11 @@ export const MESSAGES: Record<string, string> = {
   introuvable: 'Cette ligne a déjà été supprimée.',
   titre: 'Il faut un titre pour créer un projet.',
   fichier: 'Aucun fichier sélectionné.',
-  format: 'Format refusé. Formats acceptés : JPEG, PNG, WebP, AVIF, MP4, WebM.',
-  lourd: 'Fichier trop lourd. Limite : 15 Mo pour une image, 60 Mo pour une vidéo.',
+  format: 'Format refusé. Formats acceptés : JPEG, PNG, WebP, AVIF, MP4, WebM, PDF.',
+  lourd: 'Fichier trop lourd. Limite : 15 Mo pour une image, 25 Mo pour un PDF, 60 Mo pour une vidéo.',
   media: "Le fichier n'a pas pu être traité. Essayez un autre format.",
   youtube: "Ce lien YouTube n'est pas reconnu. Collez l'adresse complète de la vidéo.",
+  genre: "Ce fichier n'est pas du bon type pour cet emplacement : une image pour un héros, une vidéo pour une boucle, un PDF pour la section document. Rien n'a été enregistré.",
   lien: "Cette adresse n'a pas été acceptée : rien n'a été enregistré. Une adresse commence par « https:// », « mailto: » ou une barre oblique pour une page du site.",
   echec: "L'enregistrement a échoué. Le détail est dans le journal du serveur.",
 };

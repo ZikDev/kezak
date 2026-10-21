@@ -3,13 +3,33 @@ import { db, insererLigne, prochainePosition } from '../../../lib/db';
 import {
   reconnaitre,
   traiterImage,
-  enregistrerVideo,
-  TAILLE_MAX_IMAGE,
+  enregistrerFichier,
+  tailleMax,
   TAILLE_MAX_VIDEO,
+  type GenreMedia,
 } from '../../../lib/media';
-import { nettoyer, cheminInterne, ancreSure, retourVers } from '../../../lib/admin';
+import { nettoyer, nettoyerLigne, cheminInterne, ancreSure, retourVers } from '../../../lib/admin';
 
 export const prerender = false;
+
+/**
+ * Où un fichier peut être rattaché, selon ce qu'il est.
+ *
+ * Le contrôle se fait AVANT l'enregistrement. Il n'existait pas : une image
+ * envoyée avec « rattacher à la boucle vidéo » devenait la boucle vidéo du
+ * projet, et la page publique affichait un lecteur vide. Avec les PDF, ce
+ * serait pire — un document posé en héros ou dans la galerie.
+ */
+// Une « Map » et non un objet : avec un objet, « rattacher=constructor »
+// renvoyait le constructeur d'Object au lieu d'une liste, et la route
+// tombait en erreur 500.
+const ACCEPTE = new Map<string, readonly GenreMedia[]>([
+  ['hero', ['image']],
+  ['video_fond', ['video']],
+  ['galerie', ['image', 'video']],
+  ['pdf', ['pdf']],
+]);
+
 
 export const POST: APIRoute = async ({ request, redirect, locals }) => {
   if (!locals.utilisateur) return new Response('Non authentifié', { status: 401 });
@@ -39,10 +59,23 @@ export const POST: APIRoute = async ({ request, redirect, locals }) => {
     return sur('err=format');
   }
 
-  const limite = signature.type === 'image' ? TAILLE_MAX_IMAGE : TAILLE_MAX_VIDEO;
-  if (octets.length > limite) {
+  if (octets.length > tailleMax(signature.type)) {
     return sur('err=lourd');
   }
+
+  // --- Où va-t-il ? Vérifié avant d'écrire quoi que ce soit sur le disque.
+  const rattacher = String(f.get('rattacher') ?? '');
+  const projetId = Number(f.get('projet_id') ?? 0);
+  const ecranId = Number(f.get('ecran_id') ?? 0);
+  const portrait = f.get('portrait') === '1';
+
+  const permis = ACCEPTE.get(rattacher);
+  if (projetId && rattacher && permis && !permis.includes(signature.type)) {
+    return sur('err=genre');
+  }
+  // Un écran d'accueil prend une image ou une vidéo ; le portrait, une image.
+  if (ecranId && signature.type === 'pdf') return sur('err=genre');
+  if (portrait && signature.type !== 'image') return sur('err=genre');
 
   try {
     const alt = nettoyer(f.get('alt'), 300);
@@ -72,25 +105,30 @@ export const POST: APIRoute = async ({ request, redirect, locals }) => {
           ).lastInsertRowid
       );
     } else {
-      const r = enregistrerVideo(octets, signature.ext, signature.mime);
+      // Vidéo ou PDF : le fichier est gardé tel quel, sous un nom aléatoire.
+      const r = enregistrerFichier(octets, signature.ext, signature.mime);
       mediaId = Number(
         db
           .prepare(
             `INSERT INTO medias (type, fichier, mime, octets, alt, legende, variantes, bichromie)
-             VALUES ('video', ?, ?, ?, ?, ?, '{}', 0)`
+             VALUES (?, ?, ?, ?, ?, ?, '{}', 0)`
           )
-          .run(r.fichier, r.mime, r.octets, alt, legende).lastInsertRowid
+          .run(signature.type, r.fichier, r.mime, r.octets, alt, legende).lastInsertRowid
       );
     }
 
     // Rattachement immédiat, quand l'envoi vient d'une fiche projet.
-    const rattacher = String(f.get('rattacher') ?? '');
-    const projetId = Number(f.get('projet_id') ?? 0);
     if (projetId) {
       if (rattacher === 'hero') {
         db.prepare('UPDATE projets SET hero_id = ? WHERE id = ?').run(mediaId, projetId);
       } else if (rattacher === 'video_fond') {
         db.prepare('UPDATE projets SET video_fond_id = ? WHERE id = ?').run(mediaId, projetId);
+      } else if (rattacher === 'pdf') {
+        db.prepare('UPDATE projets SET pdf_id = ? WHERE id = ?').run(mediaId, projetId);
+        // Le titre de la section peut être donné en même temps que le
+        // fichier ; vide, il ne remplace pas celui qui existe déjà.
+        const titre = nettoyerLigne(f.get('pdf_titre'), 80);
+        if (titre) db.prepare('UPDATE projets SET pdf_titre = ? WHERE id = ?').run(titre, projetId);
       } else if (rattacher === 'galerie') {
         insererLigne('projet_medias', {
           projet_id: projetId,
@@ -101,13 +139,12 @@ export const POST: APIRoute = async ({ request, redirect, locals }) => {
       }
     }
 
-    const ecranId = Number(f.get('ecran_id') ?? 0);
     if (ecranId) {
       const colonne = signature.type === 'video' ? 'video_id' : 'media_id';
       db.prepare(`UPDATE accueil_ecrans SET ${colonne} = ? WHERE id = ?`).run(mediaId, ecranId);
     }
 
-    if (f.get('portrait') === '1') {
+    if (portrait) {
       db.prepare(
         "INSERT INTO reglages (cle, valeur) VALUES ('portrait_id', ?) ON CONFLICT(cle) DO UPDATE SET valeur = excluded.valeur"
       ).run(String(mediaId));

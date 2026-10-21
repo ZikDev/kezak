@@ -20,9 +20,43 @@ const TYPES: Record<string, string> = {
   png: 'image/png',
   mp4: 'video/mp4',
   webm: 'video/webm',
+  pdf: 'application/pdf',
 };
 
+/** Les types lus par morceaux : les vidéos, et les PDF que pdf.js lit page à page. */
+const PAR_PLAGES = (type: string) => type.startsWith('video/') || type === 'application/pdf';
+
 export const prerender = false;
+
+/**
+ * Une plage d'octets, lue selon la norme HTTP (RFC 9110, § 14.1.2).
+ *
+ * L'ancienne lecture prenait « bytes=-500 » pour « du début à 500 » — ce
+ * sont les 500 DERNIERS octets —, refusait « bytes=0-5000 » sur un fichier
+ * de 1000 octets au lieu de le tronquer, et acceptait « xbytes=… ». Aucun
+ * client du site n'en souffrait encore ; un lecteur vidéo plus pointilleux
+ * l'aurait fait.
+ *
+ * Renvoie les bornes incluses, « hors » pour une plage impossible (416),
+ * ou « ignorer » pour ce qu'on ne sert pas par morceaux (plusieurs plages).
+ */
+function lirePlage(entete: string, taille: number): [number, number] | 'hors' | 'ignorer' {
+  const m = /^bytes=(\d*)-(\d*)$/.exec(entete.trim());
+  if (!m) return 'ignorer';
+  const [, a, b] = m;
+  if (a === '' && b === '') return 'ignorer';
+  if (a === '') {
+    // Suffixe : les N derniers octets.
+    const n = Number(b);
+    if (!Number.isSafeInteger(n) || n === 0 || taille === 0) return 'hors';
+    return [Math.max(0, taille - n), taille - 1];
+  }
+  const debut = Number(a);
+  if (!Number.isSafeInteger(debut) || debut >= taille) return 'hors';
+  const fin = b === '' ? taille - 1 : Math.min(Number(b), taille - 1);
+  if (!Number.isSafeInteger(fin) || fin < debut) return 'hors';
+  return [debut, fin];
+}
 
 /**
  * Un flux Node n'est pas un corps de Response valide au sens du standard :
@@ -65,30 +99,34 @@ export const GET: APIRoute = ({ params, request }) => {
     // Les images et vidéos du studio ne sont pas une banque d'images :
     // elles ne s'intègrent que depuis le site lui-même.
     'Cross-Origin-Resource-Policy': 'same-site',
-    'Content-Disposition': 'inline',
+    // Un PDF n'est jamais ouvert dans l'onglet : il est enregistré. Le site
+    // le lit avec son propre lecteur ; ouvert directement, il passait par
+    // celui du navigateur, sous l'adresse du domaine — et ce qu'il contient
+    // n'a pas été écrit par nous. « attachment » ne gêne pas pdf.js, qui
+    // lit le fichier par une requête, pas par une navigation.
+    'Content-Disposition': type === 'application/pdf' ? 'attachment' : 'inline',
     'Accept-Ranges': 'bytes',
   };
 
   // Lecture partielle, indispensable pour que les vidéos se lisent et se
   // déplacent dans la timeline.
   const plage = request.headers.get('range');
-  if (plage && type.startsWith('video/')) {
-    const m = /bytes=(\d*)-(\d*)/.exec(plage);
-    if (m) {
-      const debut = m[1] ? Number(m[1]) : 0;
-      const fin = m[2] ? Number(m[2]) : infos.size - 1;
-      if (
-        Number.isNaN(debut) ||
-        Number.isNaN(fin) ||
-        debut >= infos.size ||
-        fin >= infos.size ||
-        debut > fin
-      ) {
+  // pdf.js demande lui aussi des plages d'octets dès que le serveur annonce
+  // « Accept-Ranges » — ce qu'il fait pour tous les fichiers. Sans cette
+  // ligne, chaque demande d'un morceau recevait le fichier entier.
+  if (plage && PAR_PLAGES(type)) {
+    const bornes = lirePlage(plage, infos.size);
+    if (bornes === 'ignorer') {
+      // Plusieurs plages, ou une syntaxe inconnue : la norme permet de
+      // répondre par le fichier entier, et c'est ce qu'on fait plus bas.
+    } else {
+      if (bornes === 'hors') {
         return new Response(null, {
           status: 416,
           headers: { 'Content-Range': `bytes */${infos.size}` },
         });
       }
+      const [debut, fin] = bornes;
       return new Response(flux(chemin, { start: debut, end: fin }), {
         status: 206,
         headers: {

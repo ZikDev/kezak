@@ -12,6 +12,8 @@ import {
   mediasDuProjet,
 } from '../../../lib/db';
 import { CATEGORIES } from '../../../lib/admin';
+import { INTITULES_META, TITRE_PDF } from '../../../lib/textes.mjs';
+import { TAILLE_MAX_PDF } from '../../../lib/media';
 
 const id = Number(Astro.params.id);
 const projet = projetParId(id);
@@ -30,10 +32,28 @@ const images = db
 const videos = db
   .prepare("SELECT id, type, alt, fichier, variantes FROM medias WHERE type = 'video' ORDER BY id DESC")
   .all() as any[];
-// La galerie accepte les deux : on propose donc tout, images et vidéos.
+// La galerie accepte les images et les vidéos — pas les PDF, qui ont leur
+// propre section. La liste les proposait, étiquetés « image », et le
+// serveur les refusait ensuite.
 const tousMedias = db
-  .prepare('SELECT id, type, alt, legende, fichier, variantes, largeur, hauteur FROM medias ORDER BY id DESC')
+  .prepare(
+    "SELECT id, type, alt, legende, fichier, variantes, largeur, hauteur FROM medias WHERE type IN ('image', 'video') ORDER BY id DESC"
+  )
   .all() as any[];
+
+/* Les quatre cases de la bande sous le héros, dans l'ordre de la page. */
+const cases = (['role', 'realisation', 'production', 'diffusion'] as const).map((cle) => ({
+  cle,
+  defaut: INTITULES_META[cle],
+}));
+
+/* Les PDF de la médiathèque, pour la section document. */
+const pdfs = db
+  .prepare("SELECT id, type, alt, legende, fichier, octets FROM medias WHERE type = 'pdf' ORDER BY id DESC")
+  .all() as any[];
+const pdfActuel = pdfs.find((m) => m.id === projet.pdf_id) || null;
+const poids = (o: number) =>
+  o >= 1048576 ? `${(o / 1048576).toFixed(1).replace('.', ',')} Mo` : `${Math.max(1, Math.round(o / 1024))} Ko`;
 
 const vignette = (m: any) => {
   try {
@@ -200,33 +220,46 @@ const vignette = (m: any) => {
   <section class="adm__section">
     <header><h2 class="adm__num">02 — Métadonnées et vidéo</h2></header>
     <p class="adm__aide">
-      La bande de quatre cases sous le héros. Un champ vide ne s'affiche pas. Pour YouTube,
-      collez l'adresse complète : seul l'identifiant est conservé.
+      La bande de quatre cases sous le héros. Chaque case a un intitulé et un contenu : changez
+      l'intitulé pour l'adapter au projet — « Client » au lieu de « Production » pour un site,
+      « Éditeur » pour une publication. Un intitulé laissé vide reprend celui par défaut ; une
+      case sans contenu ne s'affiche pas. Pour YouTube, collez l'adresse complète : seul
+      l'identifiant est conservé.
     </p>
     <form method="post" action="/admin/api/enregistrer">
       <input type="hidden" name="csrf" value={csrf} />
       <input type="hidden" name="table" value="projets" />
       <input type="hidden" name="id" value={id} />
       <input type="hidden" name="retour" value={retour} />
-      <div class="adm__duo">
-        <p class="adm__champ">
-          <label for="role">Mon rôle</label>
-          <input type="text" id="role" name="c_role" value={projet.role} />
-        </p>
-        <p class="adm__champ">
-          <label for="realisation">Réalisation</label>
-          <input type="text" id="realisation" name="c_realisation" value={projet.realisation} />
-        </p>
-      </div>
-      <div class="adm__duo">
-        <p class="adm__champ">
-          <label for="production">Production</label>
-          <input type="text" id="production" name="c_production" value={projet.production} />
-        </p>
-        <p class="adm__champ">
-          <label for="diffusion">Diffusion</label>
-          <input type="text" id="diffusion" name="c_diffusion" value={projet.diffusion} />
-        </p>
+      {/*
+        Une ligne par case : l'intitulé à gauche, étroit, le contenu à
+        droite. C'est l'ordre de lecture de la bande sur la page publique,
+        où l'intitulé est au-dessus du contenu.
+      */}
+      <div class="cases">
+        {cases.map((c, i) => (
+          <div class="case">
+            <p class="adm__champ">
+              <label for={`${c.cle}_titre`}>
+                Intitulé <span class="visuellement-cache">de la case {i + 1}</span>
+              </label>
+              <input
+                type="text"
+                id={`${c.cle}_titre`}
+                name={`c_${c.cle}_titre`}
+                value={projet[`${c.cle}_titre`]}
+                placeholder={c.defaut}
+                maxlength="40"
+              />
+            </p>
+            <p class="adm__champ">
+              <label for={c.cle}>
+                Contenu <span class="visuellement-cache">de la case {i + 1}</span>
+              </label>
+              <input type="text" id={c.cle} name={`c_${c.cle}`} value={projet[c.cle]} />
+            </p>
+          </div>
+        ))}
       </div>
       <p class="adm__champ">
         <label for="youtube">Vidéo YouTube</label>
@@ -329,9 +362,119 @@ const vignette = (m: any) => {
     />
   </section>
 
-  <!-- 07 — Galerie ---------------------------------------------------------- -->
+  <!-- 07 — Document PDF ----------------------------------------------------- -->
   <section class="adm__section">
-    <header><h2 class="adm__num">07 — Galerie</h2></header>
+    <header><h2 class="adm__num">07 — Document PDF</h2></header>
+    <p class="adm__aide">
+      Un PDF lu directement sur la page, juste avant la galerie : dossier de presse, plaquette,
+      rapport. Les visiteurs le feuillettent sans le télécharger — téléphone compris — et peuvent
+      aussi l'enregistrer. {Math.round(TAILLE_MAX_PDF / 1048576)} Mo au maximum. Un PDF exporté
+      « pour le web » ou en « taille de fichier réduite » s'ouvre bien plus vite qu'un PDF
+      préparé pour l'impression.
+    </p>
+
+    {
+      pdfActuel && (
+        <div class="pdf-actuel">
+          <span class="pdf-actuel__marque" aria-hidden="true">PDF</span>
+          <span class="pdf-actuel__nom">
+            {pdfActuel.alt || pdfActuel.legende || `Document #${pdfActuel.id}`} · {poids(pdfActuel.octets || 0)}
+          </span>
+          {/*
+            Vers la page publique, et non vers le fichier : c'est là qu'on
+            voit ce que verront les visiteurs. Le fichier seul s'ouvrirait
+            dans le lecteur du navigateur, qui n'est pas celui du site.
+          */}
+          <a
+            class="adm__bouton adm__bouton--discret"
+            href={`/projets/${projet.slug}#document`}
+            target="_blank"
+            rel="noopener"
+          >
+            Voir sur la page <span aria-hidden="true">↗</span>
+          </a>
+        </div>
+      )
+    }
+
+    <form method="post" action="/admin/api/enregistrer">
+      <input type="hidden" name="csrf" value={csrf} />
+      <input type="hidden" name="table" value="projets" />
+      <input type="hidden" name="id" value={id} />
+      <input type="hidden" name="retour" value={retour} />
+      <div class="adm__duo">
+        <p class="adm__champ">
+          <label for="pdf_titre">Titre de la section</label>
+          <input
+            type="text"
+            id="pdf_titre"
+            name="c_pdf_titre"
+            value={projet.pdf_titre}
+            placeholder={`${TITRE_PDF} — ou « Dossier de presse », « Plaquette »`}
+            maxlength="80"
+          />
+        </p>
+        <p class="adm__champ">
+          <label for="pdf_id">Le PDF affiché</label>
+          <select id="pdf_id" name="c_pdf_id" aria-describedby="pdf_id-aide">
+            <option value="">— aucun : la section n'apparaît pas —</option>
+            {pdfs.map((m) => (
+              <option value={m.id} selected={m.id === projet.pdf_id}>
+                #{m.id} — {m.alt || m.legende || 'PDF sans nom'} · {poids(m.octets || 0)}
+              </option>
+            ))}
+          </select>
+          <span class="adm__note" id="pdf_id-aide">
+            {pdfs.length === 0
+              ? 'Aucun PDF dans la médiathèque pour l’instant : envoyez-en un ci-dessous.'
+              : 'Choisir « aucun » retire la section de la page ; le fichier reste dans la médiathèque.'}
+          </span>
+        </p>
+      </div>
+      <div class="adm__actions">
+        <button class="adm__bouton adm__bouton--plein" type="submit">Enregistrer</button>
+      </div>
+    </form>
+
+    <form method="post" action="/admin/api/televerser" enctype="multipart/form-data" class="envoi">
+      <input type="hidden" name="csrf" value={csrf} />
+      <input type="hidden" name="retour" value={retour} />
+      <input type="hidden" name="projet_id" value={id} />
+      <input type="hidden" name="rattacher" value="pdf" />
+      <div class="adm__duo">
+        <p class="adm__champ">
+          <label for="f-pdf">Envoyer un nouveau PDF</label>
+          <input
+            type="file"
+            id="f-pdf"
+            name="fichier"
+            accept="application/pdf,.pdf"
+            data-limite-pdf-mo={Math.round(TAILLE_MAX_PDF / 1048576)}
+            required
+          />
+        </p>
+        <p class="adm__champ">
+          <label for="a-pdf">Nom du document</label>
+          <input
+            type="text"
+            id="a-pdf"
+            name="alt"
+            maxlength="300"
+            placeholder="Dossier de presse 2026"
+            aria-describedby="a-pdf-aide"
+          />
+          <span class="adm__note" id="a-pdf-aide">Pour le retrouver dans la médiathèque. Le visiteur ne le voit pas.</span>
+        </p>
+      </div>
+      <div class="adm__actions">
+        <button class="adm__bouton adm__bouton--plein" type="submit">Envoyer et afficher</button>
+      </div>
+    </form>
+  </section>
+
+  <!-- 08 — Galerie ---------------------------------------------------------- -->
+  <section class="adm__section">
+    <header><h2 class="adm__num">08 — Galerie</h2></header>
     <p class="adm__aide">
       Sur le site, la galerie se parcourt vue par vue, avec des flèches. Chaque vue est montrée
       en entier, jamais rognée — une affiche verticale reste lisible. Les images de la galerie
@@ -477,9 +620,9 @@ const vignette = (m: any) => {
     />
   </section>
 
-  <!-- 08 — Crédits ---------------------------------------------------------- -->
+  <!-- 09 — Crédits ---------------------------------------------------------- -->
   <section class="adm__section">
-    <header><h2 class="adm__num">08 — Crédits</h2></header>
+    <header><h2 class="adm__num">09 — Crédits</h2></header>
     <p class="adm__aide">
       Qui a fait quoi — générique d'un film, colophon d'une publication, équipe d'un site. Nommez
       aussi les rôles que vous n'avez pas tenus : c'est ce qui rend le vôtre crédible. Cochez
@@ -514,6 +657,53 @@ const vignette = (m: any) => {
     padding-top: var(--e-4);
     border-top: 1px solid var(--filet-papier);
   }
+  /* La bande des quatre cases : intitulé étroit, contenu large. */
+  .cases {
+    display: flex;
+    flex-direction: column;
+    gap: var(--e-3);
+  }
+  .case {
+    display: grid;
+    grid-template-columns: minmax(0, 14rem) minmax(0, 1fr);
+    gap: var(--e-3);
+    align-items: end;
+  }
+  @media (max-width: 40rem) {
+    .case {
+      grid-template-columns: minmax(0, 1fr);
+      gap: var(--e-1);
+      padding-bottom: var(--e-3);
+      border-bottom: 1px solid var(--filet-papier);
+    }
+  }
+
+  /* La fiche du PDF rattaché : pas de vignette — un PDF n'en a pas —,
+     mais son nom, son poids, et un lien pour l'ouvrir avant de publier. */
+  .pdf-actuel {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--e-3);
+    padding: var(--e-3) var(--e-4);
+    border: 1px solid var(--filet-papier);
+    background: #fff;
+    margin-bottom: var(--e-4);
+  }
+  .pdf-actuel__marque {
+    font-family: var(--mono);
+    font-size: var(--t-100);
+    letter-spacing: var(--ls-etiquette);
+    padding: 0.2rem 0.45rem;
+    border: 1px solid currentColor;
+    color: var(--texte-papier-doux);
+  }
+  .pdf-actuel__nom {
+    flex: 1;
+    min-width: 12rem;
+    overflow-wrap: anywhere;
+  }
+
   .apercu {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(6rem, 1fr));

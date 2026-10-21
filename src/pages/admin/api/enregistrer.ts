@@ -13,7 +13,17 @@ import {
   REGLAGES_LIENS,
   COLONNES_LIEN,
   CATEGORIES,
+  GENRE_DES_COLONNES,
+  GENRE_DES_REGLAGES,
 } from '../../../lib/admin';
+
+/** Le média existe-t-il, et est-il du genre attendu ? */
+function bonGenre(id: unknown, permis: readonly string[]): boolean {
+  const n = Number(id);
+  if (!Number.isInteger(n) || n <= 0) return false;
+  const m = db.prepare('SELECT type FROM medias WHERE id = ?').get(n) as { type: string } | undefined;
+  return !!m && permis.includes(m.type);
+}
 
 export const prerender = false;
 
@@ -30,21 +40,35 @@ export const POST: APIRoute = async ({ request, redirect, locals }) => {
   const sur = (m: string) => redirect(retourVers(retour, m, ancre), 303);
 
   try {
-    // Lot de réglages : tous les champs nommés r_<clé>.
-    let reglages = 0;
+    /*
+      Deux temps : tout vérifier, puis tout écrire.
+
+      Les réglages étaient écrits au fil de la lecture du formulaire. Un
+      champ refusé en fin de formulaire — un portrait qui désigne un PDF,
+      une adresse invalide — renvoyait « Rien n'a été enregistré » alors
+      que les champs précédents l'étaient déjà. L'écriture se fait
+      maintenant d'un bloc, dans une seule transaction : tout ou rien, et
+      le message dit vrai.
+    */
+    const aEcrire: [string, string][] = [];
     for (const [cle, valeur] of f.entries()) {
       if (!cle.startsWith('r_')) continue;
       const nom = cle.slice(2);
       if (!REGLAGES_AUTORISES.has(nom)) continue;
+      const genreAttendu = GENRE_DES_REGLAGES[nom];
+      if (genreAttendu && String(valeur ?? '').trim() !== '' && !bonGenre(valeur, genreAttendu)) {
+        return sur('err=genre');
+      }
       if (REGLAGES_LIENS.has(nom)) {
         const propre = lienSur(valeur);
         if (propre === '' && String(valeur ?? '').trim() !== '') return sur('err=lien');
-        definirReglage(nom, propre);
+        aEcrire.push([nom, propre]);
       } else {
-        definirReglage(nom, nettoyer(valeur, 4000));
+        aEcrire.push([nom, nettoyer(valeur, 4000)]);
       }
-      reglages++;
     }
+    const reglages = aEcrire.length;
+    let ligne: { table: string; id: number; champs: Record<string, any> } | null = null;
 
     const table = String(f.get('table') ?? '');
     const id = Number(f.get('id') ?? 0);
@@ -65,6 +89,13 @@ export const POST: APIRoute = async ({ request, redirect, locals }) => {
         if (champs[col] === '' && String(f.get(`c_${col}`) ?? '').trim() !== '') {
           return sur('err=lien');
         }
+      }
+
+      // Un média désigné doit exister et être du bon genre. Vider le champ
+      // (« — aucun — ») reste possible : la valeur est alors nulle.
+      for (const [col, permis] of Object.entries(GENRE_DES_COLONNES[table] ?? {})) {
+        if (champs[col] === undefined || champs[col] === null) continue;
+        if (!bonGenre(champs[col], permis)) return sur('err=genre');
       }
 
       if (table === 'projets') {
@@ -99,10 +130,16 @@ export const POST: APIRoute = async ({ request, redirect, locals }) => {
         }
       }
 
-      majLigne(table, id, champs);
+      ligne = { table, id, champs };
     } else if (reglages === 0) {
       return sur('err=rien');
     }
+
+    // Tout est vérifié : on écrit.
+    db.transaction(() => {
+      for (const [nom, valeur] of aEcrire) definirReglage(nom, valeur);
+      if (ligne) majLigne(ligne.table, ligne.id, ligne.champs);
+    })();
 
     return sur('ok=1');
   } catch (e: any) {

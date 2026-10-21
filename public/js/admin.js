@@ -545,8 +545,17 @@
       // 30 Mo passait le contrôle, partait entièrement, et n'était
       // refusée qu'au bout des deux minutes de téléversement.
       var estVideo = /^video\//.test(fichier.type);
-      var limite = Number(estVideo ? champ.dataset.limiteVideoMo : champ.dataset.limiteImageMo) ||
-        (estVideo ? 60 : 15);
+      // Un PDF a sa propre limite. Certains systèmes ne donnent pas de type
+      // au fichier choisi : l'extension sert alors de repli — ce n'est
+      // qu'un contrôle de confort, le serveur lit les octets.
+      var estPdf = fichier.type === 'application/pdf' || /\.pdf$/i.test(fichier.name);
+      var limite = Number(
+          estPdf
+            ? champ.dataset.limitePdfMo
+            : estVideo
+              ? champ.dataset.limiteVideoMo
+              : champ.dataset.limiteImageMo
+        ) || (estPdf ? 25 : estVideo ? 60 : 15);
       var envoi = champ.form && champ.form.querySelector('button[type="submit"], button:not([type])');
       if (mo > limite) {
         info.textContent += ' — trop lourd, la limite est de ' + limite + ' Mo.';

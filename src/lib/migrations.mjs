@@ -111,10 +111,42 @@ function creditsEtLiens(db) {
   }
 }
 
+/**
+ * Les intitulés des métadonnées, et un document PDF par projet.
+ *
+ * Six colonnes ajoutées à `projets`, aucune reconstruction : SQLite sait
+ * ajouter une colonne en place, y compris une clé étrangère, pourvu que sa
+ * valeur par défaut soit NULL — c'est le cas de `pdf_id`.
+ *
+ * Chaque ajout est conditionné à l'absence de la colonne. La migration est
+ * donc rejouable sans erreur, même sur une base où une partie des colonnes
+ * existerait déjà — une base neuve, par exemple, qui les tient de
+ * schema.mjs.
+ */
+const AJOUTS_PROJETS = [
+  ['role_titre', "TEXT NOT NULL DEFAULT ''"],
+  ['realisation_titre', "TEXT NOT NULL DEFAULT ''"],
+  ['production_titre', "TEXT NOT NULL DEFAULT ''"],
+  ['diffusion_titre', "TEXT NOT NULL DEFAULT ''"],
+  ['pdf_id', 'INTEGER REFERENCES medias(id) ON DELETE SET NULL'],
+  ['pdf_titre', "TEXT NOT NULL DEFAULT ''"],
+];
+
+function intitulesEtDocument(db) {
+  const deja = colonnes(db, 'projets');
+  for (const [nom, definition] of AJOUTS_PROJETS) {
+    // Les noms viennent de la liste ci-dessus, jamais d'ailleurs ; le
+    // contrôle est là pour le jour où quelqu'un l'oublierait.
+    if (!/^[a-z_]+$/.test(nom)) throw new Error(`nom de colonne refusé : ${nom}`);
+    if (!deja.has(nom)) db.exec(`ALTER TABLE projets ADD COLUMN ${nom} ${definition}`);
+  }
+}
+
 /** Numéro de version → ce qu'il faut faire pour l'atteindre. */
 const MIGRATIONS = [
   { version: 1, nom: 'galerie : accepte les vidéos YouTube', appliquer: galerieAccepteYoutube },
   { version: 2, nom: 'crédits : un lien par nom, et la note renommée', appliquer: creditsEtLiens },
+  { version: 3, nom: 'projets : intitulés des métadonnées et document PDF', appliquer: intitulesEtDocument },
 ];
 
 export const VERSION_CIBLE = MIGRATIONS[MIGRATIONS.length - 1].version;
@@ -127,7 +159,6 @@ export const VERSION_CIBLE = MIGRATIONS[MIGRATIONS.length - 1].version;
  */
 function versionInitiale(db) {
   const cols = colonnes(db, 'projet_medias');
-  if (cols.size === 0) return VERSION_CIBLE; // table absente : schema.mjs vient de la créer au bon format
   if (!cols.has('youtube')) return 0;
   if (!colonnes(db, 'projet_credits').has('url')) return 1;
   // La colonne est là, mais la migration 2 fait deux choses : la colonne
@@ -136,7 +167,17 @@ function versionInitiale(db) {
   // texte affiché en marge des crédits. On ne déclare l'étape faite que
   // lorsque ses deux moitiés le sont.
   const reste = db.prepare("SELECT 1 FROM reglages WHERE cle = 'generique_note'").get();
-  return reste ? 1 : 2;
+  if (reste) return 1;
+  // La migration 3 est faite quand ses six colonnes sont là — toutes.
+  //
+  // C'est aussi le cas d'une base neuve, que schema.mjs vient de créer au
+  // dernier format : elle est reconnue ici comme déjà à jour. Le test qui
+  // devait le faire (« table absente ») ne pouvait jamais être vrai, puisque
+  // le schéma crée la table juste avant ; une base neuve rejouait donc la
+  // dernière migration, et le journal annonçait une transformation sur une
+  // base vide.
+  const projets = colonnes(db, 'projets');
+  return AJOUTS_PROJETS.every(([nom]) => projets.has(nom)) ? 3 : 2;
 }
 
 /** Applique ce qui manque. Renvoie la liste de ce qui a été fait. */

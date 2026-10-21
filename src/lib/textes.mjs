@@ -23,3 +23,20 @@ export const NOTE_CREDITS =
  */
 export const ANCIENNE_NOTE_GENERIQUE =
   "Extrait du générique du film, tel qu'il y figure. Les postes que je n'ai pas tenus sont nommés aussi : c'est ce qui rend le mien crédible.";
+
+/**
+ * Les intitulés par défaut des quatre cases sous le héros d'un projet.
+ *
+ * Chaque projet peut remplacer le sien depuis l'admin — « Client » au lieu
+ * de « Production » pour un site, « Éditeur » pour une publication. Un
+ * intitulé laissé vide reprend celui-ci.
+ */
+export const INTITULES_META = {
+  role: 'Mon rôle',
+  realisation: 'Réalisation',
+  production: 'Production',
+  diffusion: 'Diffusion',
+};
+
+/** Le titre de la section PDF quand on ne lui en a pas donné. */
+export const TITRE_PDF = 'Document';

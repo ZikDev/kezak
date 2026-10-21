@@ -42,8 +42,13 @@ export const POST: APIRoute = async ({ request, redirect, locals }) => {
       // Le média doit exister, et c'est vérifié ici plutôt que laissé à la
       // clé étrangère : on veut un message compréhensible, pas une
       // exception SQLite.
-      const existe = db.prepare('SELECT id FROM medias WHERE id = ?').get(mediaId);
+      const existe = db.prepare('SELECT id, type FROM medias WHERE id = ?').get(mediaId) as
+        | { id: number; type: string }
+        | undefined;
       if (!existe) return sur('err=introuvable');
+      // Une galerie montre des images et des vidéos. Un PDF y serait une
+      // vue vide : il a sa propre section, juste avant.
+      if (existe.type !== 'image' && existe.type !== 'video') return sur('err=genre');
       insererLigne('projet_medias', { projet_id: projetId, media_id: mediaId, position, legende });
       return sur('ok=1');
     }

@@ -67,6 +67,15 @@ CREATE TABLE IF NOT EXISTS projets (
   realisation   TEXT NOT NULL DEFAULT '',
   production    TEXT NOT NULL DEFAULT '',
   diffusion     TEXT NOT NULL DEFAULT '',
+  /* Les intitulés des quatre cases sous le héros. Vides, ils reprennent
+     ceux de src/lib/textes.mjs (« Mon rôle », « Réalisation »…). */
+  role_titre        TEXT NOT NULL DEFAULT '',
+  realisation_titre TEXT NOT NULL DEFAULT '',
+  production_titre  TEXT NOT NULL DEFAULT '',
+  diffusion_titre   TEXT NOT NULL DEFAULT '',
+  /* Un document PDF, lu sur la page, juste avant la galerie. */
+  pdf_id        INTEGER REFERENCES medias(id) ON DELETE SET NULL,
+  pdf_titre     TEXT NOT NULL DEFAULT '',
   citation      TEXT NOT NULL DEFAULT '',
   citation_qui  TEXT NOT NULL DEFAULT '',
   note          TEXT NOT NULL DEFAULT '',

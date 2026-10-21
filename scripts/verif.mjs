@@ -66,7 +66,13 @@ const tokens = new Set(
 );
 /* Variables locales à un composant, posées en style en ligne : elles
    n'ont pas à figurer dans la palette. */
-const locales = new Set(['ratio', 'repli', 'degrade', 'voile', 'voile-etroit', 'ajuste', 'h-vue', 'voie-fleche']);
+const locales = new Set([
+  'ratio', 'repli', 'degrade', 'voile', 'voile-etroit', 'ajuste', 'h-vue', 'voie-fleche', 'h-cadre',
+  // Celles de la couche de texte de pdf.js (LecteurPdf.astro) : posées par
+  // la bibliothèque elle-même, page par page.
+  'scale-factor', 'user-unit', 'total-scale-factor', 'scale-round-x', 'scale-round-y',
+  'min-font-size', 'text-scale-factor', 'min-font-size-inv', 'font-height', 'scale-x', 'rotate',
+]);
 for (const f of [...astro, ...fichiers.filter((f) => f.endsWith('.css'))]) {
   for (const m of readFileSync(f, 'utf8').matchAll(/var\(--([a-z0-9-]+)/g)) {
     if (!tokens.has(m[1]) && !locales.has(m[1])) {
@@ -126,6 +132,39 @@ if (!existsSync('.env')) {
   for (const t of tablesChamps) {
     if (!tablesDb.has(t)) {
       erreurs.push(`src/lib/db.ts : la table « ${t} » est dans CHAMPS mais absente de TABLES_ADMIN — elle sera refusée à l'enregistrement`);
+    }
+  }
+  // Et dans l'autre sens : une table de TABLES_ADMIN sans entrée dans
+  // CHAMPS est une table qu'on peut supprimer ou réordonner, mais dont on
+  // ne peut modifier aucune colonne — presque toujours un oubli.
+  for (const t of tablesDb) {
+    if (!tablesChamps.includes(t)) {
+      erreurs.push(`src/lib/admin.ts : la table « ${t} » est dans TABLES_ADMIN mais absente de CHAMPS`);
+    }
+  }
+
+  // Les colonnes qui désignent un média : elles doivent être modifiables
+  // (CHAMPS) et numériques (NUMERIQUES). Sans la seconde condition, « — aucun
+  // — » enregistrait une chaîne vide au lieu de NULL, et le contrôle du
+  // genre la refusait : impossible de retirer un média.
+  const colonnesDe = {};
+  for (const m of blocChamps.matchAll(/^\s{2}([a-z_]+):\s*\[([\s\S]*?)\]/gm)) {
+    colonnesDe[m[1]] = new Set([...m[2].matchAll(/'([a-z_]+)'/g)].map((x) => x[1]));
+  }
+  const debutNum = srcAdmin.indexOf('const NUMERIQUES');
+  const numeriques = new Set(
+    [...srcAdmin.slice(debutNum, srcAdmin.indexOf(']);', debutNum)).matchAll(/'([a-z_]+)'/g)].map((x) => x[1])
+  );
+  const debutGenre = srcAdmin.indexOf('GENRE_DES_COLONNES');
+  const blocGenre = srcAdmin.slice(debutGenre, srcAdmin.indexOf('};', debutGenre));
+  for (const m of blocGenre.matchAll(/([a-z_]+):\s*\{([^}]*)\}/g)) {
+    for (const c of [...m[2].matchAll(/([a-z_]+):\s*\[/g)].map((x) => x[1])) {
+      if (!colonnesDe[m[1]]?.has(c)) {
+        erreurs.push(`src/lib/admin.ts : « ${m[1]}.${c} » a un genre de média mais n'est pas dans CHAMPS`);
+      }
+      if (!numeriques.has(c)) {
+        erreurs.push(`src/lib/admin.ts : « ${c} » désigne un média mais n'est pas dans NUMERIQUES`);
+      }
     }
   }
 

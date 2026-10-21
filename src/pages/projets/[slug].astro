@@ -5,6 +5,7 @@ import Grain from '../../components/Grain.astro';
 import FacadeYoutube from '../../components/FacadeYoutube.astro';
 import Carrousel from '../../components/Carrousel.astro';
 import BoucleVideo from '../../components/BoucleVideo.astro';
+import LecteurPdf from '../../components/LecteurPdf.astro';
 import {
   projetParSlug,
   sectionsDuProjet,
@@ -16,8 +17,8 @@ import {
   media,
   tousReglages,
 } from '../../lib/db';
-import { lienSur } from '../../lib/admin';
-import { NOTE_CREDITS } from '../../lib/textes.mjs';
+import { lienSur, slugifier } from '../../lib/admin';
+import { NOTE_CREDITS, INTITULES_META, TITRE_PDF } from '../../lib/textes.mjs';
 
 const { slug } = Astro.params;
 const projet = projetParSlug(String(slug));
@@ -66,12 +67,28 @@ const externe = (url: string) => /^https?:/i.test(url);
 
 const lesCredits = credits.map((c) => ({ ...c, url: lienSur(c.url) }));
 
-const metas = [
-  ['Mon rôle', projet.role],
-  ['Réalisation', projet.realisation],
-  ['Production', projet.production],
-  ['Diffusion', projet.diffusion],
-].filter(([, v]) => v);
+/* Les quatre cases sous le héros. Leur intitulé est propre à chaque
+   projet — un site n'a pas de « Diffusion », il a un « Client » —, et un
+   intitulé laissé vide dans l'admin reprend celui par défaut. */
+const metas = (['role', 'realisation', 'production', 'diffusion'] as const)
+  .map((cle) => [String(projet[`${cle}_titre`] || '').trim() || INTITULES_META[cle], projet[cle]])
+  .filter(([, v]) => v);
+
+/* Le document PDF. Le média est relu et son genre vérifié : la colonne ne
+   devrait jamais désigner autre chose qu'un PDF, mais une base restaurée,
+   un média remplacé ou une requête forgée pourraient l'y avoir fait
+   pointer — et un lecteur de PDF ouvert sur une image ne montre rien. */
+const documentPdf = (() => {
+  const m = media(projet.pdf_id);
+  if (!m || m.type !== 'pdf') return null;
+  const titre = String(projet.pdf_titre || '').trim() || TITRE_PDF;
+  return {
+    src: `/media/${m.fichier}`,
+    titre,
+    octets: m.octets,
+    nomFichier: [projet.slug, slugifier(titre)].filter(Boolean).join('-') || 'document',
+  };
+})();
 ---
 
 <Base titre={projet.titre} description={projet.resume} actif="projets">
@@ -206,6 +223,20 @@ const metas = [
                 </li>
               ))}
             </ul>
+          </div>
+        )
+      }
+
+      {
+        documentPdf && (
+          <div class="contenu contenu--planche document" id="document">
+            <p class="etiquette etiquette--accent">{documentPdf.titre}</p>
+            <LecteurPdf
+              src={documentPdf.src}
+              titre={documentPdf.titre}
+              octets={documentPdf.octets}
+              nomFichier={documentPdf.nomFichier}
+            />
           </div>
         )
       }
@@ -482,6 +513,14 @@ const metas = [
   .citation cite {
     font-style: normal;
     color: var(--texte-doux);
+  }
+
+  /* --- Le document ------------------------------------------------- */
+  .document {
+    margin-top: var(--e-7);
+    display: flex;
+    flex-direction: column;
+    gap: var(--e-4);
   }
 
   /* --- Les liens ---------------------------------------------------- */

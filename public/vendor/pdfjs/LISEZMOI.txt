@@ -1,0 +1,43 @@
+pdf.js — le lecteur de PDF intégré aux fiches projet
+======================================================
+
+Version embarquée : pdfjs-dist 6.2.108, construction « legacy »
+(Mozilla, licence Apache 2.0 — voir LICENSE).
+
+Pourquoi « legacy » : la construction moderne utilise des fonctions
+JavaScript si récentes qu'un iPhone resté sous iOS 18 ne les connaît pas.
+La version « legacy » apporte ses propres compléments et fonctionne sur
+les navigateurs des trois ou quatre dernières années.
+
+Pourquoi ces fichiers sont dans le dépôt plutôt qu'installés par npm :
+ils sont servis tels quels au navigateur, sans passer par la construction
+du site. Les recopier à la main est plus simple qu'un script de copie,
+et la version utilisée se lit ici.
+
+Ce qui est copié, et d'où (dans le paquet npm pdfjs-dist) :
+
+  pdf.min.js              ← legacy/build/pdf.min.mjs
+  pdf.worker.min.js       ← legacy/build/pdf.worker.min.mjs
+  standard_fonts/         ← standard_fonts/
+  wasm/*_nowasm_fallback.js ← wasm/  (décodeurs JPEG 2000 et JBIG2)
+
+Les fichiers sont renommés de « .mjs » en « .js » : certains serveurs ne
+connaissent pas l'extension « .mjs » et l'envoient avec un type que le
+navigateur refuse pour un module.
+
+Ce qui n'est volontairement PAS copié :
+
+  - les « .wasm » : le site interdit WebAssembly (politique de sécurité du
+    contenu). Le lecteur est réglé pour s'en passer (useWasm: false) et
+    utilise les décodeurs JavaScript ci-dessus ;
+  - cmaps/ : utile seulement pour le chinois, le japonais et le coréen ;
+  - pdf.sandbox : sert à exécuter le JavaScript contenu dans un PDF, ce que
+    le site refuse par principe.
+
+METTRE À JOUR — à faire quand Mozilla publie un correctif de sécurité :
+
+  1. npm view pdfjs-dist version          (dernière version publiée)
+  2. npm pack pdfjs-dist                  (télécharge l'archive .tgz)
+  3. décompresser, recopier les fichiers ci-dessus aux mêmes noms
+  4. changer le numéro de version en tête de ce fichier
+  5. ouvrir une fiche projet qui contient un PDF et vérifier qu'il s'affiche

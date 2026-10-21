@@ -33,6 +33,9 @@ const surProjets = compter(`
   UNION ALL
   SELECT video_fond_id AS id, COUNT(*) AS n FROM projets WHERE video_fond_id IS NOT NULL GROUP BY video_fond_id
 `);
+const enDocument = compter(
+  'SELECT pdf_id AS id, COUNT(*) AS n FROM projets WHERE pdf_id IS NOT NULL GROUP BY pdf_id'
+);
 const dansGaleries = compter(
   'SELECT media_id AS id, COUNT(*) AS n FROM projet_medias GROUP BY media_id'
 );
@@ -50,6 +53,8 @@ const emplois = (id: number): string[] => {
   if (p) ou.push(`en-tête de projet (${p})`);
   const g = dansGaleries.get(id);
   if (g) ou.push(`galerie de projet (${g})`);
+  const d = enDocument.get(id);
+  if (d) ou.push(`document de projet (${d})`);
   if (portraitId === String(id)) ou.push('portrait du Studio');
   return ou;
 };
@@ -65,13 +70,14 @@ const vignette = (m: any) => {
 const poids = (o: number) => (o > 1048576 ? `${(o / 1048576).toFixed(1)} Mo` : `${Math.round(o / 1024)} Ko`);
 ---
 
-<Admin titre="Médias" sousTitre="Les images sont traitées en bichromie à l'envoi. Les vidéos sont servies telles quelles.">
+<Admin titre="Médias" sousTitre="Les images sont traitées en bichromie à l'envoi. Les vidéos et les PDF sont servis tels quels.">
   <section class="adm__section">
     <header><h2 class="adm__num">Envoyer un fichier</h2></header>
     <p class="adm__aide">
       Images : JPEG, PNG, WebP ou AVIF, 15 Mo au maximum. Vidéos de fond : MP4 ou WebM, 60 Mo au
-      maximum — visez trois à six secondes, sans piste audio, entre 1 et 3 Mo. Les vidéos de
-      projet passent par YouTube, depuis la fiche du projet.
+      maximum — visez trois à six secondes, sans piste audio, entre 1 et 3 Mo. PDF : 25 Mo au
+      maximum, rattachés ensuite à un projet depuis sa fiche. Les vidéos de projet passent par
+      YouTube, depuis la fiche du projet.
     </p>
     <form method="post" action="/admin/api/televerser" enctype="multipart/form-data">
       <input type="hidden" name="csrf" value={csrf} />
@@ -79,7 +85,7 @@ const poids = (o: number) => (o > 1048576 ? `${(o / 1048576).toFixed(1)} Mo` : `
       <div class="adm__duo">
         <p class="adm__champ">
           <label for="fichier">Fichier</label>
-          <input type="file" id="fichier" name="fichier" accept="image/*,video/mp4,video/webm" data-limite-image-mo="15" data-limite-video-mo="60" required />
+          <input type="file" id="fichier" name="fichier" accept="image/*,video/mp4,video/webm,application/pdf,.pdf" data-limite-image-mo="15" data-limite-video-mo="60" data-limite-pdf-mo="25" required />
         </p>
         <p class="adm__champ">
           <label for="alt">Texte alternatif</label>
@@ -115,6 +121,15 @@ const poids = (o: number) => (o > 1048576 ? `${(o / 1048576).toFixed(1)} Mo` : `
               <article class="adm__vignette">
                 {src ? (
                   <img src={src} alt={m.alt || ''} width="200" height="150" loading="lazy" />
+                ) : m.type === 'pdf' ? (
+                  // Un PDF n'a pas d'aperçu : on n'en fabrique pas. Une
+                  // vignette générée demanderait de dessiner la première
+                  // page sur le serveur, donc d'y installer un moteur PDF
+                  // — beaucoup de surface pour une miniature.
+                  <div class="adm__vignette-pdf">
+                    <span aria-hidden="true">PDF</span>
+                    <span class="adm__vignette-pdf__nom">{m.alt || 'Document sans nom'}</span>
+                  </div>
                 ) : (
                   <video
                     src={`/media/${m.fichier}`}
@@ -183,5 +198,31 @@ const poids = (o: number) => (o > 1048576 ? `${(o / 1048576).toFixed(1)} Mo` : `
   }
   .supprimer {
     padding: 0 0.7rem 0.7rem;
+  }
+  /* La vignette d'un PDF : la même place qu'une image, une étiquette au
+     lieu d'un aperçu, et le nom du document — c'est lui qu'on cherche. */
+  .adm__vignette-pdf {
+    aspect-ratio: 4 / 3;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    padding: 0.7rem;
+    background: var(--papier);
+    color: var(--abysse);
+    text-align: center;
+  }
+  .adm__vignette-pdf > span:first-child {
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    letter-spacing: 0.18em;
+    padding: 0.3rem 0.55rem;
+    border: 1px solid currentColor;
+  }
+  .adm__vignette-pdf__nom {
+    font-size: 0.8rem;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
   }
 </style>

@@ -24,9 +24,16 @@ mkdirSync(dossierUploads, { recursive: true });
 
 export const TAILLE_MAX_IMAGE = 15 * 1024 * 1024; // 15 Mo
 export const TAILLE_MAX_VIDEO = 60 * 1024 * 1024; // 60 Mo par boucle de fond
+/* Un dossier de presse illustré pèse rarement plus de 10 Mo. Au-delà, c'est
+   presque toujours un PDF « pour l'impression », images en pleine
+   définition : il se lit mal à l'écran et se télécharge mal sur un
+   téléphone. Mieux vaut l'exporter « pour le web ». */
+export const TAILLE_MAX_PDF = 25 * 1024 * 1024; // 25 Mo
 
 /** Les seuls types acceptés, avec leur signature binaire. */
-const SIGNATURES: { mime: string; ext: string; type: 'image' | 'video'; test: (b: Buffer) => boolean }[] = [
+export type GenreMedia = 'image' | 'video' | 'pdf';
+
+const SIGNATURES: { mime: string; ext: string; type: GenreMedia; test: (b: Buffer) => boolean }[] = [
   { mime: 'image/jpeg', ext: 'jpg', type: 'image', test: (b) => b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff },
   {
     mime: 'image/png',
@@ -60,7 +67,23 @@ const SIGNATURES: { mime: string; ext: string; type: 'image' | 'video'; test: (b
     type: 'video',
     test: (b) => b.subarray(0, 4).equals(Buffer.from([0x1a, 0x45, 0xdf, 0xa3])),
   },
+  {
+    // « %PDF- » en tout premier octet, et rien d'autre. La norme tolère des
+    // octets parasites avant l'en-tête — jusqu'à mille —, mais c'est
+    // précisément ce qui permet de fabriquer un fichier à double lecture,
+    // PDF pour l'un et HTML ou image pour l'autre. Un PDF exporté par un
+    // logiciel normal commence toujours par son en-tête.
+    mime: 'application/pdf',
+    ext: 'pdf',
+    type: 'pdf',
+    test: (b) => b.length > 8 && b.subarray(0, 5).toString('latin1') === '%PDF-',
+  },
 ];
+
+/** La limite de poids d'un genre de média. */
+export function tailleMax(type: GenreMedia): number {
+  return type === 'image' ? TAILLE_MAX_IMAGE : type === 'pdf' ? TAILLE_MAX_PDF : TAILLE_MAX_VIDEO;
+}
 
 export function reconnaitre(octets: Buffer) {
   return SIGNATURES.find((s) => {
@@ -174,11 +197,13 @@ export async function traiterImage(
   };
 }
 
-export function enregistrerVideo(octets: Buffer, ext: string, mime: string) {
+/** Enregistre un fichier tel quel — une vidéo, un PDF : rien à recadrer. */
+export function enregistrerFichier(octets: Buffer, ext: string, mime: string) {
   const nom = nomAleatoire(ext);
   writeFileSync(join(dossierUploads, nom), octets);
   return { fichier: nom, mime, octets: octets.length };
 }
+export const enregistrerVideo = enregistrerFichier;
 
 export function supprimerFichiers(noms: string[]) {
   for (const nom of noms) {
