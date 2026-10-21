@@ -68,6 +68,7 @@ const tokens = new Set(
    n'ont pas à figurer dans la palette. */
 const locales = new Set([
   'ratio', 'repli', 'degrade', 'voile', 'voile-etroit', 'ajuste', 'h-vue', 'voie-fleche', 'h-cadre',
+  'rapport-pdf', 'barre-pdf', 'marge-pdf',
   // Celles de la couche de texte de pdf.js (LecteurPdf.astro) : posées par
   // la bibliothèque elle-même, page par page.
   'scale-factor', 'user-unit', 'total-scale-factor', 'scale-round-x', 'scale-round-y',

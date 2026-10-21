@@ -453,10 +453,21 @@ projet.
 - **Retirer** : choisissez « — aucun — » dans la liste et enregistrez.
 - **Réutiliser** un PDF déjà envoyé : choisissez-le dans la même liste.
 
-Sur la page, les pages du document se dessinent les unes sous les
-autres dans un cadre qui défile, avec un compteur, un bouton plein écran
-(sauf sur iPhone, qui ne le permet pas) et un bouton **Télécharger**. Le
-texte est sélectionnable et se cherche avec Ctrl+F.
+Sur la page, le document s'affiche dans un cadre **aux proportions de
+ses pages** — une page entière s'y voit d'un coup, à la française comme
+à l'italienne —, suivi d'un bouton **Télécharger** :
+
+- **sur ordinateur**, c'est le lecteur de PDF du navigateur lui-même,
+  celui que tout le monde connaît : barre d'outils, numéro de page, zoom,
+  recherche, impression ;
+- **sur téléphone et tablette**, où ce lecteur ne fonctionne pas dans une
+  page, c'est celui du site : les pages se dessinent les unes sous les
+  autres, avec un compteur et un bouton plein écran (sauf sur iPhone). Le
+  texte reste sélectionnable et cherchable.
+
+Le format des pages est lu à l'envoi du fichier. Pour un PDF envoyé avant
+la version 6.6, il est lu à la première visite de la page, une fois pour
+toutes.
 
 Ce qu'il faut savoir :
 
@@ -465,10 +476,11 @@ Ce qu'il faut savoir :
 | Poids maximal | **100 Mo**. Un PDF exporté « pour le web » (images à 150 dpi) reste conseillé : il s'ouvre plus vite et se télécharge mieux sur un téléphone |
 | Format conseillé | export « optimisé pour le web » (linéarisé) : la première page s'affiche avant que le reste soit lu |
 | Mot de passe | un PDF protégé ne s'affiche pas — il n'y a aucune raison d'en publier un |
-| Liens et formulaires du PDF | **pas cliquables sur la page**, volontairement : un lien piégé glissé dans un document s'exécuterait sous l'adresse du site. Ils fonctionnent dans le fichier téléchargé |
+| Liens du PDF | cliquables sur ordinateur (le lecteur du navigateur les gère) ; **pas sur téléphone**, volontairement : le lecteur du site ne rend pas les liens actifs. Ils fonctionnent dans le fichier téléchargé |
+| Document aux pages de formats différents | le cadre prend le format le plus fréquent ; une couverture d'un autre format s'affiche plus petite |
 | Téléphone | les pages sont lisibles mais petites ; le bouton Télécharger ouvre le document dans le lecteur du téléphone |
-| Gros documents | au-delà de 150 pages ou de 8 Mo, seul le texte des pages parcourues est cherchable avec Ctrl+F |
-| Données mobiles | seules les pages regardées sont téléchargées, pas le fichier entier |
+| Gros documents, sur téléphone | au-delà de 150 pages ou de 8 Mo, seul le texte des pages parcourues est cherchable |
+| Données mobiles | sur téléphone, seules les pages regardées sont téléchargées, pas le fichier entier |
 
 Le lecteur, c'est **pdf.js** (Mozilla), copié dans `public/vendor/pdfjs/`.
 Il se met à jour comme une dépendance de sécurité : la marche à suivre est
@@ -605,7 +617,7 @@ l'apparence, le bloc « Le rideau de chargement » en tête de
 | En-têtes | CSP stricte en production, HSTS, `nosniff`, `Referrer-Policy`, `Permissions-Policy`, `frame-ancestors 'none'` |
 | Formulaire public | pot de miel et délai minimal de remplissage, plutôt qu'un captcha inaccessible ; nom, organisation et adresse nettoyés de tout retour à la ligne avant de partir dans un en-tête de courriel |
 | Taille des requêtes | plafond sur `Content-Length` avant toute lecture du corps : 512 Ko, 105 Mo sur la route de téléversement ; les envois de fichiers (`multipart`) ne sont acceptés que sur cette route |
-| PDF | lus par pdf.js sans JavaScript, sans WebAssembly, sans liens ni formulaires actifs ; décodage d'image plafonné (bombes de décompression) ; servis en `Content-Disposition: attachment`, jamais ouverts dans un onglet sous l'adresse du site |
+| PDF | sur ordinateur, affichés par le lecteur du navigateur, qui isole le contenu du document de la page ; affichables dans un cadre **du site seulement** (`frame-ancestors 'self'`). Sur téléphone, lus par pdf.js sans JavaScript, sans WebAssembly, sans liens ni formulaires actifs, décodage d'image plafonné (bombes de décompression). Format des pages lu à l'envoi avec une décompression plafonnée |
 | Rattachements | une image ne peut pas devenir la boucle vidéo, ni un PDF le héros ou une vue de galerie : le genre est contrôlé à l'envoi **et** à l'enregistrement |
 | Force brute, 3ᵉ garde | un compteur global de 100 échecs par quart d'heure, qui tient même si l'adresse d'origine n'est pas fiable |
 | Messages d'erreur | seuls des codes transitent dans l'URL ; les phrases viennent d'une table (`MESSAGES` dans `src/lib/admin.ts`). Ni fuite du schéma, ni texte arbitraire affiché dans l'interface |

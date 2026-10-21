@@ -38,7 +38,9 @@ const CSP_PROD = [
   "media-src 'self' blob:",
   "font-src 'self'",
   "connect-src 'self'",
-  "frame-src https://www.youtube-nocookie.com",
+  // « 'self' » : le document PDF d'un projet s'affiche dans un cadre, avec
+  // le lecteur du navigateur.
+  "frame-src 'self' https://www.youtube-nocookie.com",
   "form-action 'self'",
   "frame-ancestors 'none'",
   "base-uri 'none'",
@@ -54,7 +56,9 @@ const CSP_DEV = [
   "media-src 'self' blob:",
   "font-src 'self' data:",
   "connect-src 'self' ws: wss:",
-  "frame-src https://www.youtube-nocookie.com",
+  // « 'self' » : le document PDF d'un projet s'affiche dans un cadre, avec
+  // le lecteur du navigateur.
+  "frame-src 'self' https://www.youtube-nocookie.com",
   "form-action 'self'",
   "frame-ancestors 'none'",
   "base-uri 'none'",
@@ -169,15 +173,27 @@ async function corpsBorne(request: Request, plafond: number): Promise<string | n
   return new TextDecoder().decode(tout);
 }
 
+/**
+ * La politique d'un PDF servi par le site.
+ *
+ * Un PDF n'est pas une page : la politique des pages ne lui sert à rien,
+ * et ses « object-src 'none' » et « frame-ancestors 'none' » empêchaient
+ * le lecteur du navigateur de l'afficher dans la fiche projet. Il ne
+ * garde que l'essentiel : être affiché dans un cadre du site, et
+ * seulement du site.
+ */
+const CSP_PDF = "frame-ancestors 'self'";
+
 /** Les en-têtes de sécurité, posés sur toute réponse — y compris les refus. */
 function enTetesSecurite(reponse: Response, versAdmin: boolean, enProd: boolean) {
   const h = reponse.headers;
-  h.set('Content-Security-Policy', enProd ? CSP_PROD : CSP_DEV);
+  const estPdf = (h.get('Content-Type') || '').startsWith('application/pdf');
+  h.set('Content-Security-Policy', estPdf ? CSP_PDF : enProd ? CSP_PROD : CSP_DEV);
   h.set('X-Content-Type-Options', 'nosniff');
   h.set('Referrer-Policy', 'strict-origin-when-cross-origin');
   h.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), interest-cohort=()');
   h.set('Cross-Origin-Opener-Policy', 'same-origin');
-  h.set('X-Frame-Options', 'DENY');
+  h.set('X-Frame-Options', estPdf ? 'SAMEORIGIN' : 'DENY');
   if (COOKIES_SECURISES) {
     h.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
   }

@@ -9,6 +9,7 @@ import {
   type GenreMedia,
 } from '../../../lib/media';
 import { nettoyer, nettoyerLigne, cheminInterne, ancreSure, retourVers } from '../../../lib/admin';
+import { formatPdf } from '../../../lib/format-pdf.mjs';
 
 export const prerender = false;
 
@@ -107,13 +108,26 @@ export const POST: APIRoute = async ({ request, redirect, locals }) => {
     } else {
       // Vidéo ou PDF : le fichier est gardé tel quel, sous un nom aléatoire.
       const r = enregistrerFichier(octets, signature.ext, signature.mime);
+      // Pour un PDF, le format de ses pages, en points : c'est lui qui
+      // donne ses proportions au cadre du document. 0 × 0 quand il n'a pas
+      // pu être lu — le cadre prend alors le format A4.
+      const format = signature.type === 'pdf' ? formatPdf(octets) ?? { largeur: 0, hauteur: 0 } : null;
       mediaId = Number(
         db
           .prepare(
-            `INSERT INTO medias (type, fichier, mime, octets, alt, legende, variantes, bichromie)
-             VALUES (?, ?, ?, ?, ?, ?, '{}', 0)`
+            `INSERT INTO medias (type, fichier, mime, largeur, hauteur, octets, alt, legende, variantes, bichromie)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, '{}', 0)`
           )
-          .run(signature.type, r.fichier, r.mime, r.octets, alt, legende).lastInsertRowid
+          .run(
+            signature.type,
+            r.fichier,
+            r.mime,
+            format ? format.largeur : null,
+            format ? format.hauteur : null,
+            r.octets,
+            alt,
+            legende
+          ).lastInsertRowid
       );
     }
 

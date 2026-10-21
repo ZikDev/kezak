@@ -1,13 +1,19 @@
 /* Kezak — le lecteur de PDF des fiches projet.
 
    Un module, et non une partie de site.js : il ne se charge que sur les
-   pages qui contiennent un document, et la bibliothèque qu'il appelle —
-   pdf.js, 1,8 Mo — ne se télécharge qu'à l'approche de la section.
+   pages qui contiennent un document.
 
-   Pourquoi pdf.js plutôt que le lecteur du navigateur : celui-ci n'existe
-   pas partout. Chrome sur Android ne sait pas afficher un PDF dans une
-   page ; il propose de le télécharger. « Lisible sur le site » voulait
-   donc dire l'afficher nous-mêmes.
+   Deux lecteurs, selon l'appareil :
+
+     — sur un ordinateur dont le navigateur sait afficher un PDF dans une
+       page, c'est lui qu'on utilise : un cadre, et le lecteur que chacun
+       connaît — barre d'outils, zoom, recherche, vignettes, impression.
+       Rien d'autre ne se télécharge ;
+     — ailleurs — téléphones, tablettes —, ce lecteur n'existe pas dans une
+       page : Chrome sur Android propose de télécharger le fichier, Safari
+       sur iPhone n'en montre que la première page. On l'affiche alors
+       nous-mêmes, avec pdf.js (1,8 Mo, téléchargé seulement à l'approche
+       de la section). Tout ce qui suit la fonction « natif » le concerne.
 
    Ce que le lecteur ne fait volontairement pas :
      — exécuter le JavaScript qu'un PDF peut contenir ;
@@ -64,6 +70,21 @@ const auRepos = (fn) =>
 
 document.querySelectorAll('[data-pdf]').forEach(preparer);
 
+/* Le lecteur du navigateur est-il là, et sur un ordinateur ?
+   « pdfViewerEnabled » le dit (faux si le visiteur a choisi de toujours
+   télécharger les PDF). Il ne suffit pas : Safari sur iPad répond oui et
+   n'affiche pourtant qu'une page dans un cadre. D'où la deuxième
+   condition — une souris ou un pavé tactile, pas un doigt. */
+// Une déclaration de fonction, et non une constante : elle doit exister
+// dès la ligne qui lance « preparer », plus haut dans le fichier.
+function natif() {
+  return (
+    navigator.pdfViewerEnabled === true &&
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(hover: hover) and (pointer: fine)').matches
+  );
+}
+
 function preparer(section) {
   const cadre = section.querySelector('[data-cadre]');
   const etat = section.querySelector('[data-etat]');
@@ -71,6 +92,23 @@ function preparer(section) {
   const boutonPlein = section.querySelector('[data-plein-ecran]');
   const titre = section.dataset.titre || 'Document';
   if (!cadre || !section.dataset.src) return;
+
+  if (natif()) {
+    const fenetre = document.createElement('iframe');
+    fenetre.className = 'pdf__natif';
+    fenetre.title = titre;
+    // Chargé à l'approche seulement, comme le reste.
+    fenetre.loading = 'lazy';
+    fenetre.setAttribute('allow', 'fullscreen');
+    // « view=FitH » : la page à la largeur du cadre (Chrome, Edge) ;
+    // « zoom=page-width », la même chose pour Firefox. Chacun ignore
+    // l'autre.
+    fenetre.src = section.dataset.src + '#navpanes=0&view=FitH&zoom=page-width';
+    cadre.replaceWith(fenetre);
+    section.classList.add('pdf--natif');
+    if (compteur) compteur.remove();
+    return;
+  }
 
   // Le cadre n'apparaît qu'ici, quand ce script tourne : sans lui — vieux
   // navigateur, script bloqué —, il ne resterait qu'un « Chargement… »
@@ -347,9 +385,10 @@ function preparer(section) {
           else liberer(p);
         }
       },
-      // Une hauteur et demie de cadre au-dessus et au-dessous : assez pour
-      // que la page suivante soit prête avant qu'on y arrive.
-      { root: cadre, rootMargin: '150% 0px' }
+      // Une hauteur de cadre au-dessus et au-dessous — le cadre ayant la
+      // hauteur d'une page, c'est la page d'avant et celle d'après : prêtes
+      // avant qu'on y arrive, sans télécharger celles qu'on ne verra pas.
+      { root: cadre, rootMargin: '100% 0px' }
     );
     pages.forEach((p) => guetteur.observe(p.div));
 

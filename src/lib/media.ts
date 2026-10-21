@@ -13,8 +13,10 @@
  */
 import './env.mjs';
 import { randomBytes } from 'node:crypto';
-import { mkdirSync, writeFileSync, existsSync, unlinkSync } from 'node:fs';
+import { mkdirSync, writeFileSync, existsSync, unlinkSync, readFileSync, statSync } from 'node:fs';
 import { join, isAbsolute, resolve } from 'node:path';
+import { db } from './db';
+import { formatPdf } from './format-pdf.mjs';
 
 const UPLOADS_DIR = process.env.UPLOADS_DIR || './uploads';
 export const dossierUploads = isAbsolute(UPLOADS_DIR)
@@ -230,4 +232,31 @@ export function srcset(variantes: Record<string, string>, format: 'avif' | 'webp
   return LARGEURS.filter((l) => variantes[`${format}${l}`])
     .map((l) => `/media/${variantes[`${format}${l}`]} ${l}w`)
     .join(', ');
+}
+
+/**
+ * Le format des pages d'un PDF de la médiathèque, en points.
+ *
+ * Lu à l'envoi depuis la version 6.6. Pour un PDF plus ancien, la colonne
+ * est vide : le fichier est lu une fois, ici, et le résultat retenu — y
+ * compris un échec, noté 0 × 0, pour ne pas relire le fichier à chaque
+ * visite. 0 × 0 donne le format A4.
+ */
+export function formatDuPdf(m: Record<string, any>): { largeur: number; hauteur: number } {
+  if (m.largeur != null && m.hauteur != null) {
+    return { largeur: Number(m.largeur) || 0, hauteur: Number(m.hauteur) || 0 };
+  }
+  let format = { largeur: 0, hauteur: 0 };
+  try {
+    const chemin = join(dossierUploads, String(m.fichier));
+    if (statSync(chemin).size <= TAILLE_MAX_PDF) format = formatPdf(readFileSync(chemin)) ?? format;
+  } catch {
+    /* fichier absent : on garde le format par défaut */
+  }
+  try {
+    db.prepare('UPDATE medias SET largeur = ?, hauteur = ? WHERE id = ?').run(format.largeur, format.hauteur, m.id);
+  } catch {
+    /* base en lecture seule : on relira la prochaine fois */
+  }
+  return format;
 }

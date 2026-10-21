@@ -18,6 +18,7 @@ import {
   tousReglages,
 } from '../../lib/db';
 import { lienSur, slugifier } from '../../lib/admin';
+import { formatDuPdf } from '../../lib/media';
 import { NOTE_CREDITS, INTITULES_META, TITRE_PDF } from '../../lib/textes.mjs';
 
 const { slug } = Astro.params;
@@ -82,9 +83,14 @@ const documentPdf = (() => {
   const m = media(projet.pdf_id);
   if (!m || m.type !== 'pdf') return null;
   const titre = String(projet.pdf_titre || '').trim() || TITRE_PDF;
+  // Un PDF envoyé avant la version 6.6 n'a pas encore son format : il est
+  // lu une fois, ici, et retenu.
+  const format = formatDuPdf(m);
   return {
     src: `/media/${m.fichier}`,
     titre,
+    largeur: format.largeur,
+    hauteur: format.hauteur,
     octets: m.octets,
     nomFichier: [projet.slug, slugifier(titre)].filter(Boolean).join('-') || 'document',
   };
@@ -235,6 +241,8 @@ const documentPdf = (() => {
               src={documentPdf.src}
               titre={documentPdf.titre}
               octets={documentPdf.octets}
+              largeur={documentPdf.largeur}
+              hauteur={documentPdf.hauteur}
               nomFichier={documentPdf.nomFichier}
             />
           </div>

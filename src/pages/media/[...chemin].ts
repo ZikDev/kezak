@@ -99,12 +99,14 @@ export const GET: APIRoute = ({ params, request }) => {
     // Les images et vidéos du studio ne sont pas une banque d'images :
     // elles ne s'intègrent que depuis le site lui-même.
     'Cross-Origin-Resource-Policy': 'same-site',
-    // Un PDF n'est jamais ouvert dans l'onglet : il est enregistré. Le site
-    // le lit avec son propre lecteur ; ouvert directement, il passait par
-    // celui du navigateur, sous l'adresse du domaine — et ce qu'il contient
-    // n'a pas été écrit par nous. « attachment » ne gêne pas pdf.js, qui
-    // lit le fichier par une requête, pas par une navigation.
-    'Content-Disposition': type === 'application/pdf' ? 'attachment' : 'inline',
+    // « inline » pour tous, PDF compris : sur ordinateur, le PDF d'un
+    // projet s'affiche dans un cadre avec le lecteur du navigateur, et
+    // « attachment » le ferait télécharger au lieu de l'afficher. Le bouton
+    // « Télécharger » de la fiche, lui, enregistre toujours le fichier
+    // (attribut « download »). Ce lecteur tient le contenu du PDF à
+    // l'écart de la page : ni le JavaScript du document ni ses liens
+    // « javascript: » n'y ont accès.
+    'Content-Disposition': 'inline',
     'Accept-Ranges': 'bytes',
   };
 

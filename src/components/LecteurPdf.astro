@@ -2,14 +2,21 @@
 /**
  * La section « document » d'une fiche projet : un PDF lu sur la page.
  *
- * Trois étages, pour que le document reste accessible quoi qu'il arrive :
+ * Trois cas, pour que le document reste lisible quoi qu'il arrive :
  *
- *   — sans JavaScript, ou sur un navigateur trop ancien : le lien de
- *     téléchargement, et rien d'autre. Il est toujours là ;
- *   — avec : un cadre où les pages se dessinent les unes sous les autres,
- *     comme posées sur une table lumineuse, avec une couche de texte
+ *   — sur un ordinateur, le lecteur de PDF du navigateur lui-même, dans
+ *     un cadre : sa barre d'outils, son zoom, sa recherche, ses vignettes —
+ *     celui que chacun connaît ;
+ *   — sur un téléphone ou une tablette, où ce lecteur n'existe pas dans
+ *     une page (Chrome sur Android propose de télécharger, Safari sur
+ *     iPhone n'affiche que la première page) : le lecteur du site, où les
+ *     pages se dessinent les unes sous les autres, avec une couche de texte
  *     sélectionnable — c'est elle que lit un lecteur d'écran ;
- *   — et là où le navigateur le permet, le plein écran.
+ *   — sans JavaScript : le lien de téléchargement. Il est toujours là.
+ *
+ * Dans les deux premiers cas, le cadre prend les proportions des pages du
+ * document : une page entière s'y voit d'un coup, qu'elle soit à la
+ * française ou à l'italienne.
  *
  * Les éléments créés par le script — pages, toiles, couche de texte — ne
  * portent pas l'attribut de portée qu'Astro ajoute aux éléments écrits
@@ -19,10 +26,19 @@ interface Props {
   src: string;
   titre: string;
   octets?: number | null;
+  /** Le format des pages, en points ; 0 quand il n'est pas connu. */
+  largeur?: number;
+  hauteur?: number;
   /** Le nom du fichier téléchargé, sans extension. */
   nomFichier: string;
 }
-const { src, titre, octets = null, nomFichier } = Astro.props;
+const { src, titre, octets = null, largeur = 0, hauteur = 0, nomFichier } = Astro.props;
+
+// Hauteur sur largeur d'une page. A4 par défaut ; bornée, pour qu'une page
+// en bandeau ou en colonne ne donne pas un cadre de trois pixels ou de
+// trois mètres.
+const rapport =
+  largeur > 0 && hauteur > 0 ? Math.min(3, Math.max(0.25, hauteur / largeur)) : Math.SQRT2;
 
 // « 2,4 Mo » et non « 2.4 Mo » : le site est en français.
 const poids =
@@ -38,7 +54,14 @@ const poids =
   document, et deux régions imbriquées au même nom se faisaient annoncer
   deux fois de suite.
 */}
-<section class="pdf" data-pdf data-src={src} data-titre={titre} data-octets={octets ?? undefined}>
+<section
+  class="pdf"
+  data-pdf
+  data-src={src}
+  data-titre={titre}
+  data-octets={octets ?? undefined}
+  style={`--rapport-pdf: ${rapport.toFixed(4)}`}
+>
   {/*
     « hidden » : c'est le script qui le montre. Sans lui, un cadre vide
     afficherait « Chargement… » pour toujours.
@@ -75,6 +98,39 @@ const poids =
     display: flex;
     flex-direction: column;
     gap: var(--e-3);
+    /* Les hauteurs ci-dessous se calculent sur la largeur de la section. */
+    container-type: inline-size;
+    /* Hauteur de la barre d'outils du lecteur du navigateur — 56 px dans
+       Chrome et Edge, un peu moins ailleurs : la page entière tient
+       toujours dans le cadre. */
+    --barre-pdf: 56px;
+  }
+
+  /* --- Sur ordinateur : le lecteur du navigateur ---------------------
+     Le cadre a la largeur de la colonne et la hauteur d'une page, barre
+     d'outils comprise — sans dépasser l'écran. Une page à la française
+     sur un grand écran donnerait un cadre plus haut que la fenêtre : il
+     se rétrécit alors en largeur, centré, pour que la page reste entière. */
+  .pdf :global(.pdf__natif) {
+    display: block;
+    width: 100%;
+    /* Repli pour les navigateurs sans unités de conteneur. */
+    height: 80vh;
+    max-width: calc((84vh - var(--barre-pdf)) / var(--rapport-pdf));
+    height: min(calc(100cqi * var(--rapport-pdf) + var(--barre-pdf)), 84vh);
+    /* Pas plus étroit que 34 rem : en dessous, Chrome range les commandes
+       de sa barre (pages, zoom) et n'y laisse que trois icônes. La page
+       déborde alors un peu en hauteur, et se fait défiler. */
+    min-width: min(100%, 34rem);
+    margin-inline: auto;
+    border: 0;
+    background: var(--filet);
+  }
+  @supports (height: 1svh) {
+    .pdf :global(.pdf__natif) {
+      max-width: calc((84svh - var(--barre-pdf)) / var(--rapport-pdf));
+      height: min(calc(100cqi * var(--rapport-pdf) + var(--barre-pdf)), 84svh);
+    }
   }
 
   /* La table lumineuse : un fond un ton plus soutenu que la planche, sur
@@ -102,6 +158,18 @@ const poids =
   @supports (height: 1svh) {
     .pdf__cadre {
       --h-cadre: clamp(22rem, 78svh, 62rem);
+    }
+  }
+  /* La hauteur d'une page entière, à la largeur où le script la dessine
+     (celle du cadre moins ses marges, 48 rem au plus), plus les marges. */
+  @supports (width: 1cqi) and (height: 1svh) {
+    .pdf__cadre {
+      --marge-pdf: var(--e-3);
+      --h-cadre: clamp(
+        12rem,
+        calc(min(100cqi - 2 * var(--marge-pdf), 48rem) * var(--rapport-pdf) + 2 * var(--marge-pdf)),
+        85svh
+      );
     }
   }
   .pdf__cadre[hidden] {
@@ -133,6 +201,13 @@ const poids =
     --total-scale-factor: calc(var(--scale-factor) * var(--user-unit));
     --scale-round-x: 1px;
     --scale-round-y: 1px;
+  }
+  /* Quand la hauteur du cadre plafonne — une page à la française sur une
+     tablette —, la page se rétrécit pour y tenir entière. */
+  @supports (width: 1cqi) and (height: 1svh) {
+    .pdf__cadre :global(.pdf__page) {
+      width: min(100%, 48rem, calc((var(--h-cadre) - 2 * var(--marge-pdf)) / var(--rapport-pdf)));
+    }
   }
   .pdf__cadre :global(.pdf__page canvas) {
     display: block;
@@ -214,6 +289,11 @@ const poids =
     justify-content: space-between;
     gap: var(--e-3);
   }
+  /* Le lecteur du navigateur a son propre compteur : il ne reste que les
+     boutons, à droite. */
+  .pdf--natif .pdf__barre {
+    justify-content: flex-end;
+  }
   .pdf__compteur {
     margin: 0;
     color: var(--texte-doux);
@@ -262,6 +342,7 @@ const poids =
      largeur est un pixel de texte en plus. */
   @media (max-width: 47.99rem) {
     .pdf__cadre {
+      --marge-pdf: var(--e-2);
       padding: var(--e-2);
       gap: var(--e-2);
     }

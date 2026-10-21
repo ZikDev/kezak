@@ -1,5 +1,51 @@
 # Ce qui a été corrigé
 
+## Version 6.6 — le lecteur de PDF du navigateur, aux proportions du document
+
+**Sur ordinateur**, le document d'un projet s'affiche maintenant avec le
+lecteur de PDF du navigateur lui-même, dans un cadre — comme sur l'ancien
+portfolio : barre d'outils, numéro de page, zoom, recherche, impression,
+liens cliquables. pdf.js n'est plus du tout chargé dans ce cas.
+
+**Sur téléphone et tablette**, ce lecteur n'existe pas dans une page
+(Chrome sur Android propose de télécharger, Safari sur iPhone n'affiche
+que la première page) : le lecteur du site prend le relais, comme avant.
+Le choix se fait dans le navigateur du visiteur — lecteur disponible, et
+souris ou pavé tactile.
+
+**Le cadre prend les proportions des pages**, dans les deux cas : une
+page entière s'y voit d'un coup. Un document à l'italienne donne un cadre
+large et bas, un A4 debout un cadre étroit et haut, centré, qui ne
+dépasse pas la hauteur de l'écran.
+
+Le format est lu **à l'envoi** du fichier (`src/lib/format-pdf.mjs`) : le
+plus fréquent des formats de page du document, pour qu'une couverture
+différente ne décide pas pour tout le reste. Les PDF déjà envoyés sont
+lus à la première visite de leur page, une fois pour toutes. Si le format
+ne peut pas être lu, le cadre prend celui d'un A4.
+
+**Ce qui a changé côté sécurité**, et pourquoi c'est sans risque :
+
+- un PDF est désormais servi en `inline`, sans quoi le navigateur le
+  téléchargerait au lieu de l'afficher dans le cadre. Le bouton
+  « Télécharger » enregistre toujours le fichier ;
+- les PDF portent leur propre politique, `frame-ancestors 'self'` : ils ne
+  s'affichent dans un cadre que sur le site lui-même. Celle des pages
+  (`object-src 'none'`, `frame-ancestors 'none'`) empêchait le lecteur du
+  navigateur de fonctionner ;
+- les pages acceptent un cadre venu du site (`frame-src 'self'`) ;
+- le lecteur du navigateur tient le contenu du document à l'écart de la
+  page : ni le JavaScript du PDF ni ses liens `javascript:` n'y ont accès ;
+- la lecture du format décompresse au plus 40 flux de 4 Mo : un fichier
+  piégé ne peut pas occuper la mémoire du serveur.
+
+Vérifié dans un vrai Chromium avec son lecteur de PDF, la vraie politique
+de sécurité et des documents à la française, à l'italienne, en 16:9 et à
+formats mélangés, de 900 à 1 440 px de large : aucune violation de la
+politique, la page entière visible. Sur téléphone (375 et 768 px), le
+cadre du lecteur du site a la hauteur d'une page, sans débordement
+horizontal ; il ne prépare plus que la page d'avant et celle d'après.
+
 ## Version 6.5.1 — des PDF jusqu'à 100 Mo
 
 La limite d'un document PDF passe de 25 à **100 Mo**, partout où elle est
