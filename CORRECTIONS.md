@@ -1,5 +1,24 @@
 # Ce qui a été corrigé
 
+## Version 6.5.1 — des PDF jusqu'à 100 Mo
+
+La limite d'un document PDF passe de 25 à **100 Mo**, partout où elle est
+contrôlée : dans la page d'envoi (avant même que le fichier parte), à la
+réception, et dans le plafond de taille des requêtes de téléversement,
+porté à 105 Mo pour laisser la place à l'enveloppe du formulaire.
+
+Elle n'est pas supprimée : un fichier envoyé passe en entier par la
+mémoire du serveur le temps d'être enregistré, et sur un hébergement
+mutualisé, un envoi démesuré pourrait faire redémarrer le site.
+
+Pour le visiteur, un gros fichier ne change presque rien : le lecteur ne
+télécharge que les pages qu'il regarde. Seul le bouton « Télécharger »
+transfère le fichier entier — son poids est affiché à côté.
+
+**À faire chez Infomaniak** : si vous aviez réglé la taille maximale des
+requêtes à 80 Mo (étape 7 de la mise en ligne), passez-la à **105 Mo**.
+Sinon, un PDF de plus de 80 Mo sera refusé avant d'atteindre le site.
+
 ## Version 6.5 — les intitulés, le document PDF
 
 ### 1. Les intitulés des métadonnées se changent projet par projet

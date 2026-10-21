@@ -555,7 +555,7 @@
             : estVideo
               ? champ.dataset.limiteVideoMo
               : champ.dataset.limiteImageMo
-        ) || (estPdf ? 25 : estVideo ? 60 : 15);
+        ) || (estPdf ? 100 : estVideo ? 60 : 15);
       var envoi = champ.form && champ.form.querySelector('button[type="submit"], button:not([type])');
       if (mo > limite) {
         info.textContent += ' — trop lourd, la limite est de ' + limite + ' Mo.';

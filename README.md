@@ -243,7 +243,7 @@ terminal :
 ssh votre-identifiant@votre-serveur.infomaniak.ch
 git clone https://github.com/vous/kezak.git ~/sites/kezak
 cd ~/sites/kezak
-npm ci
+npm install
 ```
 
 ## 4. Créer les dossiers persistants — l'étape à ne pas rater
@@ -310,12 +310,13 @@ Ajoutez enfin une redirection **301** de `portfolio.kezak.ch` vers
 
 **Un réglage à ne pas oublier : la taille maximale d'une requête.**
 L'application refuse d'elle-même un corps de plus de 512 Ko, sauf sur la
-route de téléversement où la limite est de 80 Mo. Mais elle ne peut le
+route de téléversement où la limite est de 105 Mo (un PDF de 100 Mo et
+son enveloppe). Mais elle ne peut le
 faire que si la requête annonce sa taille : un client malveillant peut
 s'en dispenser. Le plafond qui compte vraiment est celui du serveur placé
 devant. Cherchez **« taille maximale des requêtes »** ou
-`client_max_body_size` dans le tableau de bord, et posez **80 Mo** — moins
-empêcherait d'envoyer une vidéo de fond, beaucoup plus laisserait un
+`client_max_body_size` dans le tableau de bord, et posez **105 Mo** — moins
+empêcherait d'envoyer un gros PDF, beaucoup plus laisserait un
 inconnu occuper la mémoire du serveur.
 
 ## 8. Programmer la sauvegarde
@@ -346,7 +347,7 @@ ne connaît que les fonctions qu'il exporte.
 cd ~/sites/kezak
 npm run sauvegarde     # d'abord, toujours
 git pull
-npm ci
+npm install        # pas « npm ci » : le dépôt n’a pas de package-lock.json
 npm run build
 ```
 
@@ -461,7 +462,7 @@ Ce qu'il faut savoir :
 
 | | |
 | --- | --- |
-| Poids maximal | **25 Mo**. Pour un document plus lourd, réduisez-le à l'export (« PDF pour le web », images à 150 dpi) |
+| Poids maximal | **100 Mo**. Un PDF exporté « pour le web » (images à 150 dpi) reste conseillé : il s'ouvre plus vite et se télécharge mieux sur un téléphone |
 | Format conseillé | export « optimisé pour le web » (linéarisé) : la première page s'affiche avant que le reste soit lu |
 | Mot de passe | un PDF protégé ne s'affiche pas — il n'y a aucune raison d'en publier un |
 | Liens et formulaires du PDF | **pas cliquables sur la page**, volontairement : un lien piégé glissé dans un document s'exécuterait sous l'adresse du site. Ils fonctionnent dans le fichier téléchargé |
@@ -603,7 +604,7 @@ l'apparence, le bloc « Le rideau de chargement » en tête de
 | XSS | échappement automatique d'Astro, aucun `set:html` sur du contenu de la base |
 | En-têtes | CSP stricte en production, HSTS, `nosniff`, `Referrer-Policy`, `Permissions-Policy`, `frame-ancestors 'none'` |
 | Formulaire public | pot de miel et délai minimal de remplissage, plutôt qu'un captcha inaccessible ; nom, organisation et adresse nettoyés de tout retour à la ligne avant de partir dans un en-tête de courriel |
-| Taille des requêtes | plafond sur `Content-Length` avant toute lecture du corps : 512 Ko, 80 Mo sur la route de téléversement ; les envois de fichiers (`multipart`) ne sont acceptés que sur cette route |
+| Taille des requêtes | plafond sur `Content-Length` avant toute lecture du corps : 512 Ko, 105 Mo sur la route de téléversement ; les envois de fichiers (`multipart`) ne sont acceptés que sur cette route |
 | PDF | lus par pdf.js sans JavaScript, sans WebAssembly, sans liens ni formulaires actifs ; décodage d'image plafonné (bombes de décompression) ; servis en `Content-Disposition: attachment`, jamais ouverts dans un onglet sous l'adresse du site |
 | Rattachements | une image ne peut pas devenir la boucle vidéo, ni un PDF le héros ou une vue de galerie : le genre est contrôlé à l'envoi **et** à l'enregistrement |
 | Force brute, 3ᵉ garde | un compteur global de 100 échecs par quart d'heure, qui tient même si l'adresse d'origine n'est pas fiable |

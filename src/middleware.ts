@@ -76,7 +76,9 @@ const CSP_DEV = [
  * reste la dernière ligne — d'où la consigne de mise en ligne (étape 7).
  */
 const LIMITE_CORPS = 512 * 1024;
-const LIMITE_TELEVERSEMENT = 80 * 1024 * 1024;
+// 100 Mo pour le plus gros fichier (un PDF), plus une marge pour
+// l'enveloppe du formulaire.
+const LIMITE_TELEVERSEMENT = 105 * 1024 * 1024;
 
 /**
  * Page d'erreur autonome, pour les refus qu'un humain peut rencontrer en

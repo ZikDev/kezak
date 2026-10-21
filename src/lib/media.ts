@@ -24,11 +24,15 @@ mkdirSync(dossierUploads, { recursive: true });
 
 export const TAILLE_MAX_IMAGE = 15 * 1024 * 1024; // 15 Mo
 export const TAILLE_MAX_VIDEO = 60 * 1024 * 1024; // 60 Mo par boucle de fond
-/* Un dossier de presse illustré pèse rarement plus de 10 Mo. Au-delà, c'est
-   presque toujours un PDF « pour l'impression », images en pleine
-   définition : il se lit mal à l'écran et se télécharge mal sur un
-   téléphone. Mieux vaut l'exporter « pour le web ». */
-export const TAILLE_MAX_PDF = 25 * 1024 * 1024; // 25 Mo
+/* 100 Mo : de quoi accueillir un portfolio ou un dossier préparé pour
+   l'impression. Le lecteur du site ne télécharge que les pages regardées,
+   un gros fichier ne pèse donc pas sur le visiteur — sauf s'il clique sur
+   « Télécharger ». Au-delà, c'est la mémoire du serveur qui fixe la
+   limite : le fichier y passe en entier pendant l'envoi. */
+export const TAILLE_MAX_PDF = 100 * 1024 * 1024; // 100 Mo
+
+/** Le plus gros fichier accepté, tous genres confondus. */
+export const TAILLE_MAX_FICHIER = Math.max(TAILLE_MAX_IMAGE, TAILLE_MAX_VIDEO, TAILLE_MAX_PDF);
 
 /** Les seuls types acceptés, avec leur signature binaire. */
 export type GenreMedia = 'image' | 'video' | 'pdf';

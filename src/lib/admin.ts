@@ -372,7 +372,7 @@ export const MESSAGES: Record<string, string> = {
   titre: 'Il faut un titre pour créer un projet.',
   fichier: 'Aucun fichier sélectionné.',
   format: 'Format refusé. Formats acceptés : JPEG, PNG, WebP, AVIF, MP4, WebM, PDF.',
-  lourd: 'Fichier trop lourd. Limite : 15 Mo pour une image, 25 Mo pour un PDF, 60 Mo pour une vidéo.',
+  lourd: 'Fichier trop lourd. Limite : 15 Mo pour une image, 100 Mo pour un PDF, 60 Mo pour une vidéo.',
   media: "Le fichier n'a pas pu être traité. Essayez un autre format.",
   youtube: "Ce lien YouTube n'est pas reconnu. Collez l'adresse complète de la vidéo.",
   genre: "Ce fichier n'est pas du bon type pour cet emplacement : une image pour un héros, une vidéo pour une boucle, un PDF pour la section document. Rien n'a été enregistré.",

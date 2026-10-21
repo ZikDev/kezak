@@ -75,7 +75,7 @@ const poids = (o: number) => (o > 1048576 ? `${(o / 1048576).toFixed(1)} Mo` : `
     <header><h2 class="adm__num">Envoyer un fichier</h2></header>
     <p class="adm__aide">
       Images : JPEG, PNG, WebP ou AVIF, 15 Mo au maximum. Vidéos de fond : MP4 ou WebM, 60 Mo au
-      maximum — visez trois à six secondes, sans piste audio, entre 1 et 3 Mo. PDF : 25 Mo au
+      maximum — visez trois à six secondes, sans piste audio, entre 1 et 3 Mo. PDF : 100 Mo au
       maximum, rattachés ensuite à un projet depuis sa fiche. Les vidéos de projet passent par
       YouTube, depuis la fiche du projet.
     </p>
@@ -85,7 +85,7 @@ const poids = (o: number) => (o > 1048576 ? `${(o / 1048576).toFixed(1)} Mo` : `
       <div class="adm__duo">
         <p class="adm__champ">
           <label for="fichier">Fichier</label>
-          <input type="file" id="fichier" name="fichier" accept="image/*,video/mp4,video/webm,application/pdf,.pdf" data-limite-image-mo="15" data-limite-video-mo="60" data-limite-pdf-mo="25" required />
+          <input type="file" id="fichier" name="fichier" accept="image/*,video/mp4,video/webm,application/pdf,.pdf" data-limite-image-mo="15" data-limite-video-mo="60" data-limite-pdf-mo="100" required />
         </p>
         <p class="adm__champ">
           <label for="alt">Texte alternatif</label>

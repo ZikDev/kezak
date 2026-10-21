@@ -5,7 +5,7 @@ import {
   traiterImage,
   enregistrerFichier,
   tailleMax,
-  TAILLE_MAX_VIDEO,
+  TAILLE_MAX_FICHIER,
   type GenreMedia,
 } from '../../../lib/media';
 import { nettoyer, nettoyerLigne, cheminInterne, ancreSure, retourVers } from '../../../lib/admin';
@@ -46,7 +46,7 @@ export const POST: APIRoute = async ({ request, redirect, locals }) => {
   // « Content-Length », et lui seul évite vraiment de charger 500 Mo en
   // mémoire : à ce stade-ci, `formData()` a déjà tout lu. Celui-ci
   // applique la limite métier, fichier par fichier.
-  if (fichier.size > TAILLE_MAX_VIDEO) {
+  if (fichier.size > TAILLE_MAX_FICHIER) {
     return sur('err=lourd');
   }
 
