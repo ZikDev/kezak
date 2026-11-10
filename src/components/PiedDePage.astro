@@ -1,6 +1,7 @@
 ---
 import { tousReglages } from '../lib/db';
 import { lienSur } from '../lib/admin';
+import { SITE_SERVICES } from '../lib/textes.mjs';
 const r = tousReglages();
 // Repassées au filtre à l'affichage : le contrôle à l'écriture est plus
 // récent que la base, et ce pied de page est sur toutes les pages du site.
@@ -16,6 +17,9 @@ const annee = new Date().getFullYear();
   <div class="contenu pied__grille">
     <p class="mono pied__phrase">{r.pied_phrase || 'Kezak est le studio de Victor Bertschy'}</p>
     <ul class="pied__reseaux">
+      <li>
+        <a class="mono" href={SITE_SERVICES}>Studio photo &amp; cours</a>
+      </li>
       {
         reseaux.map(([nom, url]) => (
           <li>
@@ -52,7 +56,8 @@ const annee = new Date().getFullYear();
   }
   .pied__reseaux {
     display: flex;
-    gap: var(--e-5);
+    flex-wrap: wrap;
+    gap: var(--e-2) var(--e-5);
     list-style: none;
     margin: 0;
     padding: 0;

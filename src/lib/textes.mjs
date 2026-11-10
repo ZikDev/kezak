@@ -40,3 +40,16 @@ export const INTITULES_META = {
 
 /** Le titre de la section PDF quand on ne lui en a pas donné. */
 export const TITRE_PDF = 'Document';
+
+/**
+ * Ce qui accompagne le nom du site dans le titre de l'accueil, et ce que
+ * Google lit pour savoir qui est derrière. Le titre de l'accueil était
+ * « Kezak » tout court : un mot que partagent une application, une
+ * société parisienne et un personnage de jeu vidéo. Google avait fini par
+ * lui préférer le texte alternatif du logo.
+ */
+export const METIER = 'Interactive Media Designer';
+export const TITRE_ACCUEIL = `Victor Bertschy, ${METIER}`;
+
+/** Les autres adresses du studio, annoncées à Google comme les siennes. */
+export const SITE_SERVICES = 'https://services.kezak.ch';

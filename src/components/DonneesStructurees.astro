@@ -1,0 +1,25 @@
+---
+/**
+ * Les données structurées (JSON-LD) : ce que Google lit pour savoir que
+ * kezak.ch est le site de Victor Bertschy, et quel nom afficher pour le
+ * site dans ses résultats.
+ *
+ * « set:html » est le seul moyen de poser du JSON dans un <script> avec
+ * Astro. Le contenu est sûr : il vient de ce fichier et de réglages de
+ * l'admin, et tout « < » y est échappé en < — une valeur contenant
+ * « </script> » ne peut donc pas refermer la balise. C'est la seule
+ * exception à la règle « aucun set:html » que vérifie `npm run verif`.
+ */
+interface Props {
+  donnees: Record<string, unknown>;
+}
+const { donnees } = Astro.props;
+const json = JSON.stringify(donnees)
+  .replace(/</g, '\\u003c')
+  .replace(/>/g, '\\u003e')
+  .replace(/&/g, '\\u0026')
+  .replace(/\u2028/g, '\\u2028')
+  .replace(/\u2029/g, '\\u2029');
+---
+
+<script type="application/ld+json" is:inline set:html={json} />

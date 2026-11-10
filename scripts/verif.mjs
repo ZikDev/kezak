@@ -84,6 +84,8 @@ for (const f of [...astro, ...fichiers.filter((f) => f.endsWith('.css'))]) {
 
 /* 6. Aucun contenu de la base injecté en HTML brut ------------------ */
 for (const f of astro) {
+  // DonneesStructurees.astro échappe elle-même tout ce qu'elle pose.
+  if (f.endsWith('DonneesStructurees.astro')) continue;
   if (readFileSync(f, 'utf8').includes('set:html')) {
     avertissements.push(`${f} : set:html — vérifier que la source n'est pas la base`);
   }

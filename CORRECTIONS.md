@@ -1,5 +1,37 @@
 # Ce qui a été corrigé
 
+## Version 6.7 — être reconnu par Google
+
+Une recherche « kezak » affichait le site sous le titre « logo de KezaK »,
+avec le texte de l'ancien site (« ouvrez ce site sur un ordinateur »).
+Deux causes : Google n'était pas repassé depuis la mise en ligne du
+nouveau site, et rien ne l'y aidait.
+
+- **Le plan du site existait sur le papier seulement.** `robots.txt`
+  annonçait `/sitemap.xml`, qui répondait 404. Il est maintenant construit
+  à chaque demande : l'accueil, les projets, le studio, le contact, et
+  chaque projet publié avec sa date de modification.
+- **Le titre de l'accueil était « Kezak » tout court**, un mot que se
+  partagent une application, une société parisienne et un personnage de
+  jeu vidéo. Il devient « Kezak — Victor Bertschy, Interactive Media
+  Designer ».
+- **Données structurées** sur l'accueil : le site (nom « Kezak ») et la
+  personne derrière (Victor Bertschy, son métier, ses profils Instagram,
+  Behance, LinkedIn, et services.kezak.ch). C'est ce que Google lit pour
+  choisir le nom du site dans ses résultats et relier les profils entre
+  eux.
+- **Une image de partage par défaut** (`public/img/partage.png`) et une
+  icône pour l'écran d'accueil des téléphones : un lien vers kezak.ch
+  partagé sur WhatsApp ou LinkedIn avait jusqu'ici une vignette vide.
+- **Les images des projets n'étaient pas indexables** : `robots.txt`
+  interdisait `/media/` aux moteurs. Elles peuvent maintenant apparaître
+  dans Google Images.
+- Le pied de page renvoie vers **services.kezak.ch** (« Studio photo &
+  cours ») : c'est le premier lien qui donne du poids au nouveau site.
+
+**À faire, une fois en ligne** : Google Search Console, voir le README,
+section « Le référencement ».
+
 ## Version 6.6 — le lecteur de PDF du navigateur, aux proportions du document
 
 **Sur ordinateur**, le document d'un projet s'affiche maintenant avec le

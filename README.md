@@ -559,6 +559,29 @@ Pour le modifier : `src/components/RideauChargement.astro` pour
 l'apparence, le bloc « Le rideau de chargement » en tête de
 `public/js/site.js` pour les délais.
 
+## Le référencement
+
+Le site donne à Google ce qu'il lui faut : un titre par page, un plan du
+site (`/sitemap.xml`), des données structurées sur l'accueil, une image de
+partage. Mais Google ne repasse pas tout seul de sitôt. Pour qu'il
+prenne en compte le site tel qu'il est :
+
+1. **search.google.com/search-console** → Ajouter une propriété →
+   **Domaine** → `kezak.ch`. Google donne une ligne TXT : ajoutez-la dans
+   le Manager Infomaniak, **Domaines → kezak.ch → Zone DNS → Ajouter une
+   entrée → TXT**, puis validez. (La propriété « Domaine » couvre aussi
+   services.kezak.ch.)
+2. **Sitemaps** → envoyez `https://kezak.ch/sitemap.xml`, puis
+   `https://services.kezak.ch/sitemap.xml`.
+3. **Inspection de l'URL** → `https://kezak.ch/` → **Demander une
+   indexation**. Faites de même pour la page studio et les principaux
+   projets. Le nouveau titre apparaît en général en quelques jours.
+4. Vérifiez les données structurées sur
+   search.google.com/test/rich-results avec `https://kezak.ch`.
+
+Sur Instagram, Behance et LinkedIn, mettez le lien `https://kezak.ch`
+dans le profil : ce sont les mêmes profils que ceux annoncés à Google.
+
 ## Dépannage
 
 | Symptôme | Cause et remède |

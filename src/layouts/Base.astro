@@ -7,7 +7,10 @@ import '../styles/transitions.css';
 import Bandeau from '../components/Bandeau.astro';
 import RideauChargement from '../components/RideauChargement.astro';
 import PiedDePage from '../components/PiedDePage.astro';
+import DonneesStructurees from '../components/DonneesStructurees.astro';
 import { tousReglages } from '../lib/db';
+import { lienSur } from '../lib/admin';
+import { METIER, TITRE_ACCUEIL, SITE_SERVICES } from '../lib/textes.mjs';
 
 interface Props {
   titre: string;
@@ -21,7 +24,10 @@ interface Props {
 const { titre, description = '', bandeauDifferre = false, actif = null, image } = Astro.props;
 const r = tousReglages();
 const site = r.site_nom || 'Kezak';
-const titreComplet = titre === site ? site : `${titre} — ${site}`;
+// L'accueil : « Kezak — Victor Bertschy, Interactive Media Designer ».
+// Les autres pages : « Studio — Kezak ».
+const accueil = Astro.url.pathname === '/';
+const titreComplet = accueil ? `${site} — ${TITRE_ACCUEIL}` : titre === site ? site : `${titre} — ${site}`;
 const desc = description || r.seo_description || '';
 
 /**
@@ -37,6 +43,42 @@ const desc = description || r.seo_description || '';
  */
 const domaine = process.env.SITE_URL || Astro.site?.href || Astro.url.origin;
 const url = new URL(Astro.url.pathname + Astro.url.search, domaine).href;
+const racine = new URL('/', domaine).href;
+
+// Une image de partage par défaut : sans elle, un lien vers l'accueil
+// partagé sur WhatsApp ou LinkedIn n'avait aucune vignette.
+const imagePartage = new URL(image || '/img/partage.png', domaine).href;
+
+// Sur l'accueil seulement : qui est le site, et qui est derrière.
+const profils = [r.reseau_instagram, r.reseau_behance, r.reseau_linkedin]
+  .map((l) => lienSur(l))
+  .filter((l) => l && /^https:\/\//.test(l));
+const donnees = accueil
+  ? {
+      '@context': 'https://schema.org',
+      '@graph': [
+        {
+          '@type': 'WebSite',
+          '@id': `${racine}#site`,
+          name: site,
+          alternateName: [`${site}.ch`, 'Victor Bertschy'],
+          url: racine,
+          inLanguage: 'fr-CH',
+          publisher: { '@id': `${racine}#victor` },
+        },
+        {
+          '@type': 'Person',
+          '@id': `${racine}#victor`,
+          name: 'Victor Bertschy',
+          jobTitle: METIER,
+          url: racine,
+          ...(r.email ? { email: r.email } : {}),
+          ...(r.lieu ? { address: { '@type': 'PostalAddress', addressLocality: r.lieu, addressCountry: 'CH' } } : {}),
+          sameAs: [...profils, SITE_SERVICES],
+        },
+      ],
+    }
+  : null;
 ---
 
 <!doctype html>
@@ -52,10 +94,13 @@ const url = new URL(Astro.url.pathname + Astro.url.search, domaine).href;
     {desc && <meta property="og:description" content={desc} />}
     <meta property="og:url" content={url} />
     <meta property="og:locale" content="fr_CH" />
-    {image && <meta property="og:image" content={new URL(image, Astro.url).href} />}
+    <meta property="og:site_name" content={site} />
+    <meta property="og:image" content={imagePartage} />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="theme-color" content="#0a1428" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/img/apple-touch-icon.png" />
+    {donnees && <DonneesStructurees donnees={donnees} />}
     <link
       rel="preload"
       href="/fonts/Lineal-Thin.woff2"
