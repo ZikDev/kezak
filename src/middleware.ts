@@ -7,6 +7,12 @@ import {
   nouveauJetonCsrf,
   csrfValide,
 } from './lib/auth';
+import {
+  PREFIXE_API_APP,
+  LIMITE_CORPS_APP,
+  verifierRequeteApp,
+  refusApp,
+} from './lib/api-app';
 
 /**
  * Middleware global : en-têtes de sécurité, session, garde de l'admin.
@@ -240,6 +246,46 @@ export const onRequest = defineMiddleware(async (context, next) => {
         headers: { Location: cible.href, 'Cache-Control': 'no-store' },
       })
     );
+  }
+
+  /* --- API de l'application Kezak --------------------------------
+     Un circuit à part, traité AVANT la session et le jeton anti-CSRF :
+     l'application n'a ni cookie ni formulaire, chaque requête porte sa
+     propre signature (voir src/lib/api-app.ts). Aucune route de ce
+     préfixe n'est atteinte sans signature valide — la vérification est
+     faite ici, une fois, et pas laissée à chaque route. */
+  if (url.pathname.startsWith(PREFIXE_API_APP)) {
+    const refusApi = (r: Response) => enTetesSecurite(r, true, EN_PROD);
+    if (!['GET', 'POST'].includes(request.method)) {
+      return refusApi(refusApp(405, 'Méthode refusée'));
+    }
+    // HTTPS uniquement en ligne. Derrière le proxy d'Infomaniak,
+    // l'application reçoit la requête en clair : c'est l'en-tête posé par
+    // le proxy qui dit ce qu'a vu le client.
+    const proto = (request.headers.get('x-forwarded-proto') || '').split(',')[0].trim();
+    if (EN_PROD && proto && proto !== 'https') {
+      return refusApi(refusApp(403, 'HTTPS obligatoire'));
+    }
+    const annonce = Number(request.headers.get('content-length') || 0);
+    if (annonce > LIMITE_CORPS_APP) return refusApi(refusApp(413, 'Requête trop volumineuse.'));
+    let corps = '';
+    if (request.method === 'POST') {
+      const lu = await corpsBorne(request.clone(), LIMITE_CORPS_APP);
+      if (lu === null) return refusApi(refusApp(413, 'Requête trop volumineuse.'));
+      corps = lu;
+    }
+    let ip = 'inconnue';
+    try {
+      ip = context.clientAddress || 'inconnue';
+    } catch {
+      /* adresse indisponible : un seul compteur pour tous */
+    }
+    const verdict = verifierRequeteApp(request, url, corps, ip);
+    if (!verdict.ok) return refusApi(refusApp(verdict.statut, verdict.raison));
+    locals.utilisateur = null;
+    locals.appVerifiee = true;
+    locals.corpsApp = corps;
+    return enTetesSecurite(await next(), true, EN_PROD);
   }
 
   /* --- Session ---------------------------------------------------- */

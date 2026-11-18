@@ -30,6 +30,14 @@ CREATE TABLE IF NOT EXISTS tentatives (
 );
 CREATE INDEX IF NOT EXISTS idx_tentatives_cle ON tentatives(cle, horodate);
 
+-- Les nonces déjà vus par l'API de l'application Kezak (src/lib/api-app.ts).
+-- Une requête signée ne peut servir qu'une fois : rejouée, son nonce est
+-- déjà là et elle est refusée. Purgés au-delà de leur fenêtre de validité.
+CREATE TABLE IF NOT EXISTS app_nonces (
+  nonce    TEXT PRIMARY KEY,
+  horodate INTEGER NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS reglages (
   cle    TEXT PRIMARY KEY,
   valeur TEXT NOT NULL
@@ -202,6 +210,7 @@ CREATE TABLE IF NOT EXISTS messages (
   budget   TEXT NOT NULL DEFAULT '',
   corps    TEXT NOT NULL DEFAULT '',
   lu       INTEGER NOT NULL DEFAULT 0,
-  cree_le  TEXT NOT NULL DEFAULT (datetime('now'))
+  cree_le  TEXT NOT NULL DEFAULT (datetime('now')),
+  repondu_le TEXT NOT NULL DEFAULT ''
 );
 `;

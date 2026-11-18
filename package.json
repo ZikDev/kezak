@@ -14,7 +14,8 @@
     "compte": "node scripts/creer-compte.mjs",
     "sauvegarde": "node scripts/sauvegarde.mjs",
     "verif": "node scripts/verif.mjs",
-    "polices": "node scripts/polices.mjs"
+    "polices": "node scripts/polices.mjs",
+    "cle-app": "node scripts/cle-app.mjs"
   },
   "dependencies": {
     "@astrojs/node": "^9.2.0",

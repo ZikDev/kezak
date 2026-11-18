@@ -142,11 +142,26 @@ function intitulesEtDocument(db) {
   }
 }
 
+/**
+ * Messages : la date de réponse.
+ *
+ * Remplie par l'application Kezak quand une réponse part depuis son module
+ * Mail (route /api/app/messages/repondu). Une colonne ajoutée en place,
+ * rien à reconstruire. Le test préalable rend l'étape rejouable : une base
+ * neuve, créée par schema.mjs avec la colonne, passe sans rien faire.
+ */
+function messagesRepondus(db) {
+  if (!colonnes(db, 'messages').has('repondu_le')) {
+    db.exec("ALTER TABLE messages ADD COLUMN repondu_le TEXT NOT NULL DEFAULT ''");
+  }
+}
+
 /** Numéro de version → ce qu'il faut faire pour l'atteindre. */
 const MIGRATIONS = [
   { version: 1, nom: 'galerie : accepte les vidéos YouTube', appliquer: galerieAccepteYoutube },
   { version: 2, nom: 'crédits : un lien par nom, et la note renommée', appliquer: creditsEtLiens },
   { version: 3, nom: 'projets : intitulés des métadonnées et document PDF', appliquer: intitulesEtDocument },
+  { version: 4, nom: 'messages : date de réponse (application Kezak)', appliquer: messagesRepondus },
 ];
 
 export const VERSION_CIBLE = MIGRATIONS[MIGRATIONS.length - 1].version;
@@ -177,7 +192,8 @@ function versionInitiale(db) {
   // dernière migration, et le journal annonçait une transformation sur une
   // base vide.
   const projets = colonnes(db, 'projets');
-  return AJOUTS_PROJETS.every(([nom]) => projets.has(nom)) ? 3 : 2;
+  if (!AJOUTS_PROJETS.every(([nom]) => projets.has(nom))) return 2;
+  return colonnes(db, 'messages').has('repondu_le') ? 4 : 3;
 }
 
 /** Applique ce qui manque. Renvoie la liste de ce qui a été fait. */

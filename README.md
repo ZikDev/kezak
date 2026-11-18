@@ -387,6 +387,20 @@ dans l'admin comme on descend sur le site.
 - **Messages** — ce que le formulaire a reçu. Les messages sont enregistrés
   en base **avant** l'envoi du courriel : si le SMTP tombe, rien n'est perdu.
 
+## L'application Kezak (Windows)
+
+L'application lit les messages et y répond par courriel grâce à une API
+privée, `/api/app/`, protégée par une clé partagée. Pour l'activer :
+
+1. `npm run cle-app` (en local ou sur le serveur) affiche une clé neuve ;
+2. sur le serveur, ajoutez au `.env` persistant la ligne
+   `APP_API_CLE=la-clé`, puis redémarrez l'application Node ;
+3. dans l'application Kezak, **Portfolio → Réglages**, collez la même clé.
+
+La clé ne va **jamais** dans le dépôt Git. Pour la changer, refaites les
+trois étapes : l'ancienne cesse aussitôt de fonctionner. Sans clé, l'API
+répond 404 et le site fonctionne comme avant.
+
 ## La galerie d'un projet
 
 Section **08** de la fiche projet. Trois façons d'ajouter une vue, côte à

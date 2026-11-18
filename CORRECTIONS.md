@@ -1,5 +1,28 @@
 # Ce qui a été corrigé
 
+## Version 6.8 — l'application Kezak lit les messages
+
+Les messages du formulaire de contact peuvent maintenant être lus depuis
+l'application Kezak (Windows), et y recevoir une réponse par courriel.
+
+- **Une API privée, en lecture seule**, sous `/api/app/` : l'état
+  (nombre de non lus), la liste des messages, et une seule écriture,
+  « marquer comme répondu ». Rien d'autre n'est atteignable : ni les
+  projets, ni les réglages, ni la suppression.
+- **Chaque requête est signée** (HMAC-SHA256) avec une clé que seuls le
+  serveur et l'application connaissent, `APP_API_CLE` dans le `.env`. La
+  clé ne circule jamais. L'horodatage doit être à moins de cinq minutes et
+  chaque requête ne sert qu'une fois : une requête interceptée ne peut pas
+  être rejouée. Dix échecs en quinze minutes depuis une même adresse, et
+  elle est bloquée. HTTPS obligatoire en ligne.
+- **Sans clé dans le `.env`, l'API n'existe pas** (404). Le site
+  fonctionne exactement comme avant.
+- Le circuit est à part dans `src/middleware.ts` : il ne lit ni ne pose
+  aucun cookie, et n'ouvre aucun accès à `/admin`.
+- **Migration 4** : une colonne `repondu_le` dans `messages`. La page
+  Messages de l'admin affiche « répondu le … » quand c'est le cas.
+- `npm run cle-app` tire une clé neuve.
+
 ## Version 6.7 — être reconnu par Google
 
 Une recherche « kezak » affichait le site sous le titre « logo de KezaK »,

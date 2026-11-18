@@ -28,6 +28,7 @@ const dateFr = (s: string) =>
             <span class="adm__num">
               {dateFr(m.cree_le)}
               {!m.lu && ' · non lu'}
+              {m.repondu_le && ` · répondu le ${dateFr(m.repondu_le)}`}
             </span>
             <form method="post" action="/admin/api/message">
               <input type="hidden" name="csrf" value={csrf} />
