@@ -1,5 +1,26 @@
 # Ce qui a été corrigé
 
+## Version 6.9 — des statistiques sans cookie
+
+L'application Kezak affiche maintenant la fréquentation du site : pages
+vues, visiteurs, pages les plus lues, sites d'où l'on vient, part de
+mobiles.
+
+- **Compté côté serveur**, au moment où la page est servie : aucun script
+  ajouté, aucun cookie, aucune bannière de consentement.
+- **Aucune donnée personnelle gardée.** Ni IP, ni navigateur, ni adresse
+  complète de provenance (le nom de domaine seul). Un même visiteur est
+  reconnu dans la journée par une empreinte hachée avec un sel qui change
+  chaque jour et ne quitte jamais la mémoire ; les empreintes sont
+  effacées après deux jours, les compteurs après deux ans.
+- **Pas comptés** : l'admin, les API, les médias, les robots, les
+  préchargements, l'administrateur connecté, et les visiteurs qui
+  demandent à ne pas être suivis (Do Not Track, Global Privacy Control).
+- Quatre tables `stats_*`, créées toutes seules au démarrage. Le comptage
+  ne peut jamais faire échouer une page.
+- Lecture par l'application : `/api/app/stats`, signée comme le reste de
+  l'API.
+
 ## Version 6.8 — l'application Kezak lit les messages
 
 Les messages du formulaire de contact peuvent maintenant être lus depuis

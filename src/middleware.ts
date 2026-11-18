@@ -13,6 +13,7 @@ import {
   verifierRequeteApp,
   refusApp,
 } from './lib/api-app';
+import { compterVisite } from './lib/statistiques';
 
 /**
  * Middleware global : en-têtes de sécurité, session, garde de l'admin.
@@ -453,6 +454,29 @@ export const onRequest = defineMiddleware(async (context, next) => {
 
   /* --- Réponse et en-têtes ---------------------------------------- */
   const reponse = enTetesSecurite(await next(), versAdmin, EN_PROD);
+
+  /* --- Statistiques (sans cookie, voir src/lib/statistiques.ts) --- */
+  if (!versAdmin && request.method === 'GET') {
+    // Derrière le proxy d'Infomaniak, l'adresse vue est celle du proxy : on
+    // prend celle qu'il transmet. Elle ne sert qu'à l'empreinte du jour,
+    // jamais stockée ; une valeur forgée ne fausserait qu'un compteur.
+    let ip = (request.headers.get('x-forwarded-for') || '').split(',')[0].trim();
+    if (!ip) {
+      try {
+        ip = context.clientAddress || '';
+      } catch {
+        /* indisponible */
+      }
+    }
+    compterVisite({
+      request,
+      url,
+      ip,
+      statut: reponse.status,
+      typeContenu: reponse.headers.get('Content-Type') || '',
+      connecte: !!locals.utilisateur,
+    });
+  }
   const h = reponse.headers;
   // L'admin n'est jamais mise en cache : c'est déjà posé ci-dessus.
   if (!versAdmin && !h.has('Cache-Control') && (h.get('Content-Type') || '').includes('text/html')) {

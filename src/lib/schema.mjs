@@ -33,6 +33,34 @@ CREATE INDEX IF NOT EXISTS idx_tentatives_cle ON tentatives(cle, horodate);
 -- Les nonces déjà vus par l'API de l'application Kezak (src/lib/api-app.ts).
 -- Une requête signée ne peut servir qu'une fois : rejouée, son nonce est
 -- déjà là et elle est refusée. Purgés au-delà de leur fenêtre de validité.
+-- Statistiques de fréquentation sans cookie (src/lib/statistiques.ts).
+-- Aucune IP, aucun identifiant durable : des compteurs par jour.
+CREATE TABLE IF NOT EXISTS stats_jours (
+  jour      TEXT PRIMARY KEY,
+  vues      INTEGER NOT NULL DEFAULT 0,
+  visiteurs INTEGER NOT NULL DEFAULT 0,
+  mobiles   INTEGER NOT NULL DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS stats_pages (
+  jour   TEXT NOT NULL,
+  chemin TEXT NOT NULL,
+  vues   INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (jour, chemin)
+);
+CREATE TABLE IF NOT EXISTS stats_referents (
+  jour    TEXT NOT NULL,
+  domaine TEXT NOT NULL,
+  visites INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (jour, domaine)
+);
+-- Empreintes du jour (hachées avec un sel qui change chaque jour et ne
+-- quitte jamais la mémoire), effacées après deux jours.
+CREATE TABLE IF NOT EXISTS stats_empreintes (
+  jour      TEXT NOT NULL,
+  empreinte TEXT NOT NULL,
+  PRIMARY KEY (jour, empreinte)
+);
+
 CREATE TABLE IF NOT EXISTS app_nonces (
   nonce    TEXT PRIMARY KEY,
   horodate INTEGER NOT NULL
